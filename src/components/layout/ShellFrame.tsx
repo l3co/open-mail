@@ -8,15 +8,22 @@ import {
   Inbox,
   Send,
   Star,
-  Trash2
+  Trash2,
+  Paperclip,
+  Reply
 } from 'lucide-react';
 import { StatusBadge } from '@components/ui/StatusBadge';
-import type { FolderRecord, ThreadSummary } from '@lib/contracts';
+import type { FolderRecord, MessageRecord, ThreadSummary } from '@lib/contracts';
 
 type ShellFrameProps = {
   backendStatus: string;
   folders: FolderRecord[];
   threads: ThreadSummary[];
+  selectedThreadId: string | null;
+  selectedThread: ThreadSummary | null;
+  messages: MessageRecord[];
+  isMessagesLoading: boolean;
+  onSelectThread: (threadId: string) => void;
 };
 
 const folderIconMap = {
@@ -39,7 +46,33 @@ const formatThreadTime = (value: string) => {
   }).format(date);
 };
 
-export const ShellFrame = ({ backendStatus, folders, threads }: ShellFrameProps) => {
+const formatMessageDate = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Agora';
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+};
+
+const getPrimaryAuthor = (message: MessageRecord) =>
+  message.from[0]?.name ?? message.from[0]?.email ?? 'Open Mail';
+
+export const ShellFrame = ({
+  backendStatus,
+  folders,
+  threads,
+  selectedThreadId,
+  selectedThread,
+  messages,
+  isMessagesLoading,
+  onSelectThread
+}: ShellFrameProps) => {
   return (
     <div className="shell-root">
       <div className="shell-backdrop" aria-hidden="true" />
@@ -138,7 +171,12 @@ export const ShellFrame = ({ backendStatus, folders, threads }: ShellFrameProps)
 
             <div className="thread-list">
               {threads.map((thread) => (
-                <article className="thread-card" key={thread.id}>
+                <button
+                  className={thread.id === selectedThreadId ? 'thread-card thread-card-active' : 'thread-card'}
+                  key={thread.id}
+                  onClick={() => onSelectThread(thread.id)}
+                  type="button"
+                >
                   <div className="thread-card-row">
                     <h4>{thread.participants[0] ?? 'Open Mail'}</h4>
                     <span>{formatThreadTime(thread.lastMessageAt)}</span>
@@ -146,24 +184,62 @@ export const ShellFrame = ({ backendStatus, folders, threads }: ShellFrameProps)
                   <p className="thread-subject">{thread.subject}</p>
                   <p className="thread-preview">{thread.snippet}</p>
                   {thread.isUnread ? <span className="thread-dot" aria-label="Unread thread" /> : null}
-                </article>
+                </button>
               ))}
             </div>
           </div>
 
-          <aside className="insight-panel">
+          <aside className="insight-panel reader-panel">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Roadmap focus</p>
-                <h3>Next implementation tracks</h3>
+                <p className="eyebrow">Thread reader</p>
+                <h3>{selectedThread?.subject ?? 'Select a conversation'}</h3>
               </div>
+              {selectedThread ? <StatusBadge label={`${messages.length} messages`} tone="neutral" /> : null}
             </div>
 
-            <ul className="insight-list">
-              <li>Persistir domain models em Rust com erros tipados e testes.</li>
-              <li>Adicionar SQLite e migrations para account, thread e message.</li>
-              <li>Conectar shell com commands reais e eventos reativos do backend.</li>
-            </ul>
+            {isMessagesLoading ? (
+              <p className="reader-empty">Carregando a thread selecionada...</p>
+            ) : null}
+
+            {!isMessagesLoading && !selectedThread ? (
+              <p className="reader-empty">Selecione uma thread para ver o histórico completo da conversa.</p>
+            ) : null}
+
+            {!isMessagesLoading && selectedThread ? (
+              <div className="message-stack">
+                {messages.map((message) => (
+                  <article className="message-card" key={message.id}>
+                    <div className="message-meta">
+                      <div>
+                        <p className="message-author">{getPrimaryAuthor(message)}</p>
+                        <p className="message-address">{message.from[0]?.email ?? 'unknown@openmail.dev'}</p>
+                      </div>
+
+                      <div className="message-actions">
+                        <span>{formatMessageDate(message.date)}</span>
+                        <button aria-label="Reply to message" className="message-action" type="button">
+                          <Reply size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="message-snippet">{message.plain_text ?? message.snippet}</p>
+
+                    {message.attachments.length ? (
+                      <div className="attachment-strip">
+                        {message.attachments.map((attachment) => (
+                          <span className="attachment-chip" key={attachment.id}>
+                            <Paperclip size={12} />
+                            {attachment.filename}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            ) : null}
           </aside>
         </section>
       </main>
