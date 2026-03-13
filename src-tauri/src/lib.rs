@@ -7,7 +7,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use commands::{
     get_message, health_check, list_accounts, list_folders, list_messages, list_threads,
-    mailbox_overview,
+    mailbox_overview, search_threads,
 };
 use domain::repositories::{
     AccountRepository, FolderRepository, MessageRepository, ThreadRepository,
@@ -41,6 +41,7 @@ pub fn run() {
             list_accounts,
             list_folders,
             list_threads,
+            search_threads,
             list_messages,
             get_message,
             mailbox_overview

@@ -20,6 +20,8 @@ type ShellFrameProps = {
   folders: FolderRecord[];
   threads: ThreadSummary[];
   activeFolderId: string | null;
+  searchQuery: string;
+  isSearchActive: boolean;
   selectedThreadId: string | null;
   selectedThread: ThreadSummary | null;
   messages: MessageRecord[];
@@ -27,6 +29,7 @@ type ShellFrameProps = {
   selectedMessage: MessageRecord | null;
   isMessagesLoading: boolean;
   onSelectFolder: (folderId: string) => void;
+  onSearchQueryChange: (query: string) => void;
   onSelectThread: (threadId: string) => void;
   onSelectMessage: (messageId: string) => void;
 };
@@ -73,6 +76,8 @@ export const ShellFrame = ({
   folders,
   threads,
   activeFolderId,
+  searchQuery,
+  isSearchActive,
   selectedThreadId,
   selectedThread,
   messages,
@@ -80,11 +85,14 @@ export const ShellFrame = ({
   selectedMessage,
   isMessagesLoading,
   onSelectFolder,
+  onSearchQueryChange,
   onSelectThread,
   onSelectMessage
 }: ShellFrameProps) => {
   const activeFolder = folders.find((folder) => folder.id === activeFolderId) ?? null;
   const selectedMessageParticipants = selectedMessage?.to.map((contact) => contact.email).join(', ') ?? '';
+  const threadPanelTitle = isSearchActive ? `Search results for "${searchQuery.trim()}"` : activeFolder?.name ?? 'Message stream';
+  const threadPanelCountLabel = isSearchActive ? `${threads.length} matches` : `${threads.length} threads`;
 
   return (
     <div className="shell-root">
@@ -135,7 +143,11 @@ export const ShellFrame = ({
         <header className="topbar">
           <label className="search-shell" aria-label="Search">
             <Search size={16} />
-            <input placeholder="Search threads, people, commands" />
+            <input
+              onChange={(event) => onSearchQueryChange(event.target.value)}
+              placeholder="Search threads, people, commands"
+              value={searchQuery}
+            />
             <span className="shortcut-pill">
               <Command size={12} />
               K
@@ -178,16 +190,20 @@ export const ShellFrame = ({
             <div className="section-heading">
               <div>
                 <p className="eyebrow">Prototype inbox</p>
-                <h3>{activeFolder?.name ?? 'Message stream'}</h3>
+                <h3>{threadPanelTitle}</h3>
               </div>
-              <StatusBadge label={`${threads.length} threads`} tone="neutral" />
+              <StatusBadge label={threadPanelCountLabel} tone="neutral" />
             </div>
 
             {!threads.length ? (
               <div className="thread-empty-state">
-                <p className="thread-empty-title">{activeFolder?.name ?? 'Folder'} is clear</p>
+                <p className="thread-empty-title">
+                  {isSearchActive ? 'No results found' : `${activeFolder?.name ?? 'Folder'} is clear`}
+                </p>
                 <p className="thread-empty-copy">
-                  Nenhuma thread encontrada nesta pasta no momento. Quando houver atividade, ela aparece aqui.
+                  {isSearchActive
+                    ? 'Tente outro termo para localizar conversas por assunto, snippet ou participante.'
+                    : 'Nenhuma thread encontrada nesta pasta no momento. Quando houver atividade, ela aparece aqui.'}
                 </p>
               </div>
             ) : null}

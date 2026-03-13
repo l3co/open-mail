@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useDeferredValue, useEffect, useState } from 'react';
 import { ShellFrame } from '@components/layout/ShellFrame';
 import { useFolderThreads } from '@hooks/useFolderThreads';
 import { useBackendHealth } from '@hooks/useBackendHealth';
 import { useMessageDetail } from '@hooks/useMessageDetail';
 import { useMailboxOverview } from '@hooks/useMailboxOverview';
+import { useSearchThreads } from '@hooks/useSearchThreads';
 import { useThreadMessages } from '@hooks/useThreadMessages';
 
 const App = () => {
@@ -13,12 +14,21 @@ const App = () => {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const folderThreadsQuery = useFolderThreads(
     mailbox?.accountId ?? null,
     selectedFolderId,
     mailbox?.allThreads ?? []
   );
-  const threads = folderThreadsQuery.data ?? mailbox?.threads ?? [];
+  const searchThreadsQuery = useSearchThreads(
+    mailbox?.accountId ?? null,
+    deferredSearchQuery,
+    mailbox?.allThreads ?? []
+  );
+  const isSearchActive = deferredSearchQuery.trim().length > 0;
+  const threads =
+    (isSearchActive ? searchThreadsQuery.data : folderThreadsQuery.data) ?? mailbox?.threads ?? [];
   const selectedThread = threads.find((thread) => thread.id === selectedThreadId) ?? threads[0] ?? null;
   const messagesQuery = useThreadMessages(selectedThread?.id ?? null);
   const messageDetailQuery = useMessageDetail(selectedMessageId);
@@ -73,15 +83,21 @@ const App = () => {
       folders={mailbox?.folders ?? []}
       threads={threads}
       activeFolderId={selectedFolderId}
+      searchQuery={searchQuery}
+      isSearchActive={isSearchActive}
       selectedThreadId={selectedThread?.id ?? null}
       selectedThread={selectedThread}
       messages={messagesQuery.data ?? []}
       selectedMessageId={selectedMessageId}
       selectedMessage={messageDetailQuery.data ?? null}
       isMessagesLoading={
-        folderThreadsQuery.isLoading || messagesQuery.isLoading || messageDetailQuery.isLoading
+        folderThreadsQuery.isLoading ||
+        searchThreadsQuery.isLoading ||
+        messagesQuery.isLoading ||
+        messageDetailQuery.isLoading
       }
       onSelectFolder={setSelectedFolderId}
+      onSearchQueryChange={setSearchQuery}
       onSelectThread={setSelectedThreadId}
       onSelectMessage={setSelectedMessageId}
     />

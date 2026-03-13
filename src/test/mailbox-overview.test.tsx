@@ -29,4 +29,22 @@ describe('mailbox overview integration', () => {
     fireEvent.click(await screen.findByRole('button', { name: /archive/i }));
     expect(await screen.findByText('Archive is clear')).toBeInTheDocument();
   });
+
+  it('filters threads through the shell search input', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    const searchInput = await screen.findByRole('textbox');
+    fireEvent.change(searchInput, { target: { value: 'rust' } });
+
+    expect(await screen.findByRole('heading', { name: 'Rust health-check online' })).toBeInTheDocument();
+    expect(await screen.findByText('Search results for "rust"')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Premium motion system approved' })).not.toBeInTheDocument();
+
+    fireEvent.change(searchInput, { target: { value: 'no-match-term' } });
+    expect(await screen.findByText('No results found')).toBeInTheDocument();
+  });
 });

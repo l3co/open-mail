@@ -61,6 +61,24 @@ pub async fn list_threads(
 }
 
 #[tauri::command]
+pub async fn search_threads(
+    state: State<'_, AppState>,
+    account_id: String,
+    query: String,
+) -> Result<Vec<Thread>, String> {
+    let trimmed_query = query.trim();
+    if trimmed_query.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    state
+        .thread_repo
+        .search(&account_id, trimmed_query)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub async fn list_messages(
     state: State<'_, AppState>,
     thread_id: String,

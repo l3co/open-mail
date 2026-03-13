@@ -16,7 +16,9 @@ export const api = {
   mailbox: {
     overview: () => invokeOrThrow<MailboxOverview>('mailbox_overview'),
     listThreads: (accountId: string, folderId: string, offset = 0, limit = 25) =>
-      invokeOrThrow<ThreadRecord[]>('list_threads', { accountId, folderId, offset, limit })
+      invokeOrThrow<ThreadRecord[]>('list_threads', { accountId, folderId, offset, limit }),
+    searchThreads: (accountId: string, query: string) =>
+      invokeOrThrow<ThreadRecord[]>('search_threads', { accountId, query })
   },
   messages: {
     listByThread: (threadId: string) =>
