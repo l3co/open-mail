@@ -23,9 +23,12 @@ type ShellFrameProps = {
   selectedThreadId: string | null;
   selectedThread: ThreadSummary | null;
   messages: MessageRecord[];
+  selectedMessageId: string | null;
+  selectedMessage: MessageRecord | null;
   isMessagesLoading: boolean;
   onSelectFolder: (folderId: string) => void;
   onSelectThread: (threadId: string) => void;
+  onSelectMessage: (messageId: string) => void;
 };
 
 const folderIconMap = {
@@ -73,10 +76,16 @@ export const ShellFrame = ({
   selectedThreadId,
   selectedThread,
   messages,
+  selectedMessageId,
+  selectedMessage,
   isMessagesLoading,
   onSelectFolder,
-  onSelectThread
+  onSelectThread,
+  onSelectMessage
 }: ShellFrameProps) => {
+  const activeFolder = folders.find((folder) => folder.id === activeFolderId) ?? null;
+  const selectedMessageParticipants = selectedMessage?.to.map((contact) => contact.email).join(', ') ?? '';
+
   return (
     <div className="shell-root">
       <div className="shell-backdrop" aria-hidden="true" />
@@ -169,10 +178,19 @@ export const ShellFrame = ({
             <div className="section-heading">
               <div>
                 <p className="eyebrow">Prototype inbox</p>
-                <h3>{folders.find((folder) => folder.id === activeFolderId)?.name ?? 'Message stream'}</h3>
+                <h3>{activeFolder?.name ?? 'Message stream'}</h3>
               </div>
               <StatusBadge label={`${threads.length} threads`} tone="neutral" />
             </div>
+
+            {!threads.length ? (
+              <div className="thread-empty-state">
+                <p className="thread-empty-title">{activeFolder?.name ?? 'Folder'} is clear</p>
+                <p className="thread-empty-copy">
+                  Nenhuma thread encontrada nesta pasta no momento. Quando houver atividade, ela aparece aqui.
+                </p>
+              </div>
+            ) : null}
 
             <div className="thread-list">
               {threads.map((thread) => (
@@ -214,7 +232,14 @@ export const ShellFrame = ({
             {!isMessagesLoading && selectedThread ? (
               <div className="message-stack">
                 {messages.map((message) => (
-                  <article className="message-card" key={message.id}>
+                  <button
+                    className={
+                      message.id === selectedMessageId ? 'message-card message-card-active' : 'message-card'
+                    }
+                    key={message.id}
+                    onClick={() => onSelectMessage(message.id)}
+                    type="button"
+                  >
                     <div className="message-meta">
                       <div>
                         <p className="message-author">{getPrimaryAuthor(message)}</p>
@@ -223,9 +248,9 @@ export const ShellFrame = ({
 
                       <div className="message-actions">
                         <span>{formatMessageDate(message.date)}</span>
-                        <button aria-label="Reply to message" className="message-action" type="button">
+                        <span aria-label="Reply to message" className="message-action" role="presentation">
                           <Reply size={14} />
-                        </button>
+                        </span>
                       </div>
                     </div>
 
@@ -241,8 +266,45 @@ export const ShellFrame = ({
                         ))}
                       </div>
                     ) : null}
-                  </article>
+                  </button>
                 ))}
+
+                {selectedMessage ? (
+                  <section className="message-detail-card">
+                    <div className="message-detail-row">
+                      <span className="message-detail-label">Subject</span>
+                      <strong>{selectedMessage.subject}</strong>
+                    </div>
+
+                    <div className="message-detail-row">
+                      <span className="message-detail-label">From</span>
+                      <span>{selectedMessage.from[0]?.email ?? 'unknown@openmail.dev'}</span>
+                    </div>
+
+                    {selectedMessageParticipants ? (
+                      <div className="message-detail-row">
+                        <span className="message-detail-label">To</span>
+                        <span>{selectedMessageParticipants}</span>
+                      </div>
+                    ) : null}
+
+                    <div className="message-detail-row">
+                      <span className="message-detail-label">Message-ID</span>
+                      <span>{selectedMessage.message_id_header}</span>
+                    </div>
+
+                    {Object.keys(selectedMessage.headers).length ? (
+                      <div className="message-header-grid">
+                        {Object.entries(selectedMessage.headers).map(([key, value]) => (
+                          <div className="message-header-chip" key={key}>
+                            <span>{key}</span>
+                            <strong>{value}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </section>
+                ) : null}
               </div>
             ) : null}
           </aside>

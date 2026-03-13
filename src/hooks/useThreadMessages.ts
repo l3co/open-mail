@@ -80,7 +80,7 @@ const fallbackMessages: Record<string, MessageRecord[]> = {
       message_id_header: '<msg_2@openmail.dev>',
       in_reply_to: null,
       references: [],
-      folder_id: 'fld_inbox',
+      folder_id: 'fld_starred',
       label_ids: [],
       is_unread: false,
       is_starred: true,
@@ -88,6 +88,57 @@ const fallbackMessages: Record<string, MessageRecord[]> = {
       date: '2026-03-13T09:28:00Z',
       attachments: [],
       headers: {},
+      created_at: '2026-03-13T10:00:00Z',
+      updated_at: '2026-03-13T10:00:00Z'
+    }
+  ],
+  thr_3: [
+    {
+      id: 'msg_3',
+      account_id: 'acc_demo',
+      thread_id: 'thr_3',
+      from: [
+        {
+          id: 'ct_me',
+          account_id: 'acc_demo',
+          name: 'Leco',
+          email: 'leco@example.com',
+          is_me: true,
+          created_at: '2026-03-13T10:00:00Z',
+          updated_at: '2026-03-13T10:00:00Z'
+        }
+      ],
+      to: [
+        {
+          id: 'ct_release',
+          account_id: 'acc_demo',
+          name: 'Release Ops',
+          email: 'release@example.com',
+          is_me: false,
+          created_at: '2026-03-13T10:00:00Z',
+          updated_at: '2026-03-13T10:00:00Z'
+        }
+      ],
+      cc: [],
+      bcc: [],
+      reply_to: [],
+      subject: 'Ship notes for desktop alpha',
+      snippet: 'Build desktop alpha aprovado, agora seguimos com pacote de release.',
+      body: '<p>Build desktop alpha aprovado, agora seguimos com pacote de release.</p>',
+      plain_text: 'Build desktop alpha aprovado, agora seguimos com pacote de release.',
+      message_id_header: '<msg_3@openmail.dev>',
+      in_reply_to: null,
+      references: [],
+      folder_id: 'fld_sent',
+      label_ids: [],
+      is_unread: false,
+      is_starred: false,
+      is_draft: false,
+      date: '2026-03-13T07:00:00Z',
+      attachments: [],
+      headers: {
+        'x-open-mail-source': 'desktop-alpha'
+      },
       created_at: '2026-03-13T10:00:00Z',
       updated_at: '2026-03-13T10:00:00Z'
     }

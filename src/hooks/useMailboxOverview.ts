@@ -38,6 +38,17 @@ const fallbackOverview: MailboxOverview = {
       total_count: 42,
       created_at: '2026-03-13T10:00:00Z',
       updated_at: '2026-03-13T10:00:00Z'
+    },
+    {
+      id: 'fld_archive',
+      account_id: 'acc_demo',
+      name: 'Archive',
+      path: 'Archive',
+      role: 'archive',
+      unread_count: 0,
+      total_count: 0,
+      created_at: '2026-03-13T10:00:00Z',
+      updated_at: '2026-03-13T10:00:00Z'
     }
   ],
   threads: [

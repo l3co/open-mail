@@ -193,6 +193,17 @@ pub async fn seed_demo_data(state: &AppState) -> Result<(), String> {
             created_at: timestamp,
             updated_at: timestamp,
         },
+        Folder {
+            id: "fld_archive".into(),
+            account_id: account.id.clone(),
+            name: "Archive".into(),
+            path: "Archive".into(),
+            role: Some(FolderRole::Archive),
+            unread_count: 0,
+            total_count: 0,
+            created_at: timestamp,
+            updated_at: timestamp,
+        },
     ];
     state
         .folder_repo
