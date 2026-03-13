@@ -1,6 +1,53 @@
 use serde::{Deserialize, Serialize};
 
+use crate::domain::models::account::SyncState;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DomainEvent {
     ApplicationStarted,
+    ThreadsChanged {
+        account_id: String,
+        thread_ids: Vec<String>,
+    },
+    MessagesChanged {
+        account_id: String,
+        message_ids: Vec<String>,
+    },
+    FoldersChanged {
+        account_id: String,
+    },
+    LabelsChanged {
+        account_id: String,
+    },
+    ContactsChanged {
+        account_id: String,
+    },
+    SyncStatusChanged {
+        account_id: String,
+        state: SyncState,
+    },
+    AccountAdded {
+        account_id: String,
+    },
+    AccountRemoved {
+        account_id: String,
+    },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DomainEvent;
+    use crate::domain::models::account::SyncState;
+
+    #[test]
+    fn serializes_domain_events() {
+        let event = DomainEvent::SyncStatusChanged {
+            account_id: "acc_1".into(),
+            state: SyncState::Running,
+        };
+
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("\"SyncStatusChanged\""));
+        assert!(json.contains("\"account_id\":\"acc_1\""));
+    }
 }
