@@ -5,6 +5,7 @@ export type SyncState =
   | { kind: 'error'; message: string };
 
 export type DomainEvent =
+  | { type: 'application-started' }
   | { type: 'threads-changed'; accountId: string; threadIds: string[] }
   | { type: 'messages-changed'; accountId: string; messageIds: string[] }
   | { type: 'folders-changed'; accountId: string }

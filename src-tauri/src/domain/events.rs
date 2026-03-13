@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::domain::models::account::SyncState;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "type", rename_all = "kebab-case", rename_all_fields = "camelCase")]
 pub enum DomainEvent {
     ApplicationStarted,
     ThreadsChanged {
@@ -47,7 +48,7 @@ mod tests {
         };
 
         let json = serde_json::to_string(&event).unwrap();
-        assert!(json.contains("\"SyncStatusChanged\""));
-        assert!(json.contains("\"account_id\":\"acc_1\""));
+        assert!(json.contains("\"type\":\"sync-status-changed\""));
+        assert!(json.contains("\"accountId\":\"acc_1\""));
     }
 }

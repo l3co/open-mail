@@ -2,12 +2,14 @@ import { useDeferredValue, useEffect, useState } from 'react';
 import { ShellFrame } from '@components/layout/ShellFrame';
 import { useFolderThreads } from '@hooks/useFolderThreads';
 import { useBackendHealth } from '@hooks/useBackendHealth';
+import { useDomainEvents } from '@hooks/useDomainEvents';
 import { useMessageDetail } from '@hooks/useMessageDetail';
 import { useMailboxOverview } from '@hooks/useMailboxOverview';
 import { useSearchThreads } from '@hooks/useSearchThreads';
 import { useThreadMessages } from '@hooks/useThreadMessages';
 
 const App = () => {
+  useDomainEvents();
   const { data, isLoading, isError } = useBackendHealth();
   const mailboxQuery = useMailboxOverview();
   const mailbox = mailboxQuery.data;

@@ -9,6 +9,7 @@ use commands::{
     get_message, health_check, list_accounts, list_folders, list_messages, list_threads,
     mailbox_overview, search_threads,
 };
+use domain::events::DomainEvent;
 use domain::repositories::{
     AccountRepository, FolderRepository, MessageRepository, ThreadRepository,
 };
@@ -19,6 +20,7 @@ use infrastructure::database::{
     },
     Database,
 };
+use tauri::Emitter;
 
 pub struct AppState {
     pub db: Database,
@@ -36,6 +38,11 @@ pub fn run() {
 
     tauri::Builder::default()
         .manage(state)
+        .setup(|app| {
+            app.emit("domain:event", DomainEvent::ApplicationStarted)
+                .map_err(|error| -> Box<dyn std::error::Error> { Box::new(error) })?;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             health_check,
             list_accounts,
