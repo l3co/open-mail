@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { MailboxOverview, MessageRecord } from '@lib/contracts';
+import type { MailboxOverview, MessageRecord, ThreadRecord } from '@lib/contracts';
 
 const isTauriRuntimeAvailable = () =>
   typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
@@ -14,7 +14,9 @@ const invokeOrThrow = async <T>(command: string, args?: Record<string, unknown>)
 
 export const api = {
   mailbox: {
-    overview: () => invokeOrThrow<MailboxOverview>('mailbox_overview')
+    overview: () => invokeOrThrow<MailboxOverview>('mailbox_overview'),
+    listThreads: (accountId: string, folderId: string, offset = 0, limit = 25) =>
+      invokeOrThrow<ThreadRecord[]>('list_threads', { accountId, folderId, offset, limit })
   },
   messages: {
     listByThread: (threadId: string) =>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ShellFrame } from '@components/layout/ShellFrame';
+import { useFolderThreads } from '@hooks/useFolderThreads';
 import { useBackendHealth } from '@hooks/useBackendHealth';
 import { useMailboxOverview } from '@hooks/useMailboxOverview';
 import { useThreadMessages } from '@hooks/useThreadMessages';
@@ -7,10 +8,30 @@ import { useThreadMessages } from '@hooks/useThreadMessages';
 const App = () => {
   const { data, isLoading, isError } = useBackendHealth();
   const mailboxQuery = useMailboxOverview();
+  const mailbox = mailboxQuery.data;
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const threads = mailboxQuery.data?.threads ?? [];
+  const folderThreadsQuery = useFolderThreads(
+    mailbox?.accountId ?? null,
+    selectedFolderId,
+    mailbox?.allThreads ?? []
+  );
+  const threads = folderThreadsQuery.data ?? mailbox?.threads ?? [];
   const selectedThread = threads.find((thread) => thread.id === selectedThreadId) ?? threads[0] ?? null;
   const messagesQuery = useThreadMessages(selectedThread?.id ?? null);
+
+  useEffect(() => {
+    if (!mailbox?.folders.length) {
+      setSelectedFolderId(null);
+      return;
+    }
+
+    setSelectedFolderId((currentFolderId) =>
+      currentFolderId && mailbox.folders.some((folder) => folder.id === currentFolderId)
+        ? currentFolderId
+        : mailbox.activeFolder
+    );
+  }, [mailbox]);
 
   useEffect(() => {
     if (!threads.length) {
@@ -30,12 +51,14 @@ const App = () => {
       backendStatus={
         isLoading ? 'Conectando ao backend Tauri...' : isError ? 'Modo web ativo' : data ?? 'Backend pronto'
       }
-      folders={mailboxQuery.data?.folders ?? []}
+      folders={mailbox?.folders ?? []}
       threads={threads}
+      activeFolderId={selectedFolderId}
       selectedThreadId={selectedThread?.id ?? null}
       selectedThread={selectedThread}
       messages={messagesQuery.data ?? []}
-      isMessagesLoading={messagesQuery.isLoading}
+      isMessagesLoading={folderThreadsQuery.isLoading || messagesQuery.isLoading}
+      onSelectFolder={setSelectedFolderId}
       onSelectThread={setSelectedThreadId}
     />
   );

@@ -104,10 +104,12 @@ export type MessageRecord = {
 };
 
 export type MailboxReadModel = {
+  accountId: string;
   activeFolder: string;
   syncState: SyncState;
   folders: FolderRecord[];
   threads: ThreadSummary[];
+  allThreads: ThreadRecord[];
 };
 
 export type MailboxOverview = {

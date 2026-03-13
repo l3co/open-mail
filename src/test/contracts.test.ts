@@ -4,9 +4,11 @@ import type { DomainEvent, MailboxReadModel } from '@lib/contracts';
 describe('contracts', () => {
   it('supports mailbox read models for future IPC hydration', () => {
     const mailbox: MailboxReadModel = {
-      activeFolder: 'Inbox',
+      accountId: 'acc_1',
+      activeFolder: 'fld_inbox',
       syncState: { kind: 'running' },
       folders: [],
+      allThreads: [],
       threads: [
         {
           id: 'thr_1',
@@ -21,6 +23,7 @@ describe('contracts', () => {
     };
 
     expect(mailbox.threads).toHaveLength(1);
+    expect(mailbox.allThreads).toHaveLength(0);
   });
 
   it('covers domain events consumed by the frontend shell', () => {

@@ -19,10 +19,12 @@ type ShellFrameProps = {
   backendStatus: string;
   folders: FolderRecord[];
   threads: ThreadSummary[];
+  activeFolderId: string | null;
   selectedThreadId: string | null;
   selectedThread: ThreadSummary | null;
   messages: MessageRecord[];
   isMessagesLoading: boolean;
+  onSelectFolder: (folderId: string) => void;
   onSelectThread: (threadId: string) => void;
 };
 
@@ -67,10 +69,12 @@ export const ShellFrame = ({
   backendStatus,
   folders,
   threads,
+  activeFolderId,
   selectedThreadId,
   selectedThread,
   messages,
   isMessagesLoading,
+  onSelectFolder,
   onSelectThread
 }: ShellFrameProps) => {
   return (
@@ -97,8 +101,9 @@ export const ShellFrame = ({
             const Icon = folder.role ? folderIconMap[folder.role as keyof typeof folderIconMap] ?? BellDot : BellDot;
             return (
               <button
-                className={folder.role === 'inbox' ? 'folder-link folder-link-active' : 'folder-link'}
+                className={folder.id === activeFolderId ? 'folder-link folder-link-active' : 'folder-link'}
                 key={folder.id}
+                onClick={() => onSelectFolder(folder.id)}
                 type="button"
               >
                 <span className="folder-link-main">
@@ -164,9 +169,9 @@ export const ShellFrame = ({
             <div className="section-heading">
               <div>
                 <p className="eyebrow">Prototype inbox</p>
-                <h3>Message stream</h3>
+                <h3>{folders.find((folder) => folder.id === activeFolderId)?.name ?? 'Message stream'}</h3>
               </div>
-              <StatusBadge label="24 unread" tone="neutral" />
+              <StatusBadge label={`${threads.length} threads`} tone="neutral" />
             </div>
 
             <div className="thread-list">

@@ -12,13 +12,16 @@ describe('mailbox overview integration', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Premium motion system approved' })).toBeInTheDocument();
-    expect(await screen.findByText('Inbox')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /inbox/i })).toBeInTheDocument();
     expect(await screen.findByText('motion-notes.pdf')).toBeInTheDocument();
 
-    fireEvent.click(await screen.findByRole('button', { name: /rust health-check online/i }));
-
+    fireEvent.click(await screen.findByRole('button', { name: /starred/i }));
     expect(await screen.findByRole('heading', { name: 'Rust health-check online' })).toBeInTheDocument();
     expect(await screen.findByText('Infra Sync')).toBeInTheDocument();
     expect(screen.queryByText('motion-notes.pdf')).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole('button', { name: /sent/i }));
+    expect(await screen.findByRole('heading', { name: 'Ship notes for desktop alpha' })).toBeInTheDocument();
+    expect(await screen.findByText('release@example.com')).toBeInTheDocument();
   });
 });

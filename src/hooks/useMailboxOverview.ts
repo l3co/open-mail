@@ -65,13 +65,30 @@ const fallbackOverview: MailboxOverview = {
       snippet: 'IPC inicial respondeu sem erro e o shell já consegue refletir o estado.',
       message_count: 2,
       participant_ids: ['infra@example.com'],
-      folder_ids: ['fld_inbox'],
+      folder_ids: ['fld_inbox', 'fld_starred'],
       label_ids: [],
       has_attachments: false,
       is_unread: false,
       is_starred: true,
       last_message_at: '2026-03-13T09:28:00Z',
       last_message_sent_at: '2026-03-13T09:28:00Z',
+      created_at: '2026-03-13T10:00:00Z',
+      updated_at: '2026-03-13T10:00:00Z'
+    },
+    {
+      id: 'thr_3',
+      account_id: 'acc_demo',
+      subject: 'Ship notes for desktop alpha',
+      snippet: 'Build desktop alpha aprovado, agora seguimos com pacote de release.',
+      message_count: 1,
+      participant_ids: ['release@example.com'],
+      folder_ids: ['fld_sent'],
+      label_ids: [],
+      has_attachments: false,
+      is_unread: false,
+      is_starred: false,
+      last_message_at: '2026-03-13T07:00:00Z',
+      last_message_sent_at: '2026-03-13T07:00:00Z',
       created_at: '2026-03-13T10:00:00Z',
       updated_at: '2026-03-13T10:00:00Z'
     }
@@ -90,11 +107,13 @@ const toThreadSummary = (overview: MailboxOverview): ThreadSummary[] =>
   }));
 
 const toMailboxReadModel = (overview: MailboxOverview): MailboxReadModel => ({
+  accountId: overview.account_id,
   activeFolder:
     overview.folders.find((folder) => folder.role === 'inbox')?.id ?? overview.folders[0]?.id ?? 'fld_inbox',
   syncState: overview.sync_state,
   folders: overview.folders,
-  threads: toThreadSummary(overview)
+  threads: toThreadSummary(overview),
+  allThreads: overview.threads
 });
 
 export const useMailboxOverview = () =>
@@ -109,4 +128,3 @@ export const useMailboxOverview = () =>
       return toMailboxReadModel(overview);
     }
   });
-
