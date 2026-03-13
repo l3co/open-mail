@@ -66,6 +66,8 @@ impl SqliteThreadRepository {
             .map_err(|error| DomainError::Database(error.to_string()))?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|error| DomainError::Database(error.to_string()))?;
+        drop(statement);
+        drop(connection);
 
         self.hydrate_threads(threads)
     }
@@ -84,6 +86,7 @@ impl ThreadRepository for SqliteThreadRepository {
             )
             .optional()
             .map_err(|error| DomainError::Database(error.to_string()))?;
+        drop(connection);
 
         match thread {
             Some(thread) => self.hydrate_thread(thread).map(Some),
@@ -115,6 +118,8 @@ impl ThreadRepository for SqliteThreadRepository {
             .map_err(|error| DomainError::Database(error.to_string()))?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|error| DomainError::Database(error.to_string()))?;
+        drop(statement);
+        drop(connection);
 
         self.hydrate_threads(threads)
     }
@@ -144,6 +149,8 @@ impl ThreadRepository for SqliteThreadRepository {
             .map_err(|error| DomainError::Database(error.to_string()))?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|error| DomainError::Database(error.to_string()))?;
+        drop(statement);
+        drop(connection);
 
         self.hydrate_threads(threads)
     }

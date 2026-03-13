@@ -38,6 +38,8 @@ impl SqliteMessageRepository {
             .map_err(|error| DomainError::Database(error.to_string()))?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|error| DomainError::Database(error.to_string()))?;
+        drop(statement);
+        drop(connection);
 
         let mut hydrated = Vec::with_capacity(messages.len());
         for mut message in messages {
@@ -61,6 +63,7 @@ impl SqliteMessageRepository {
             )
             .optional()
             .map_err(|error| DomainError::Database(error.to_string()))?;
+        drop(connection);
 
         match message {
             Some(mut message) => {
