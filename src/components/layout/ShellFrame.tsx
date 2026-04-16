@@ -97,7 +97,9 @@ export const ShellFrame = ({
   const threadPanelCountLabel = isSearchActive ? `${threads.length} matches` : `${threads.length} threads`;
   const syncPhaseLabel = syncStatusDetail?.phase ? syncStatusDetail.phase.replaceAll('-', ' ') : 'sync idle';
   const syncFoldersLabel = syncStatusDetail ? `${syncStatusDetail.foldersSynced} folders` : '0 folders';
-  const syncMessagesLabel = syncStatusDetail ? `${syncStatusDetail.messagesObserved} observed` : '0 observed';
+  const syncMessagesLabel = syncStatusDetail
+    ? `${syncStatusDetail.messagesObserved} observed, ${syncStatusDetail.messagesDeleted} removed`
+    : '0 observed';
 
   return (
     <div className="shell-root">

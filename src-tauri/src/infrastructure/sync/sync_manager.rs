@@ -183,6 +183,8 @@ impl SyncManager {
                 folders: snapshot.folders,
                 folders_synced: snapshot.folders_synced,
                 messages_observed: snapshot.messages_observed,
+                messages_flagged: snapshot.messages_flagged,
+                messages_deleted: snapshot.messages_deleted,
                 last_sync_started_at: snapshot.last_sync_started_at,
                 last_sync_finished_at: Some(Utc::now()),
                 last_error: None,
@@ -289,6 +291,8 @@ impl SyncWorker {
                 folders: Vec::new(),
                 folders_synced: 0,
                 messages_observed: 0,
+                messages_flagged: 0,
+                messages_deleted: 0,
                 last_sync_started_at: Some(Utc::now()),
                 last_sync_finished_at: None,
                 last_error: None,
@@ -309,6 +313,8 @@ impl SyncWorker {
                     folders: Vec::new(),
                     folders_synced: 0,
                     messages_observed: 0,
+                    messages_flagged: 0,
+                    messages_deleted: 0,
                     last_sync_started_at: started_at,
                     last_sync_finished_at: Some(Utc::now()),
                     last_error: Some(error.to_string()),
@@ -355,6 +361,8 @@ impl SyncWorker {
                     .collect(),
                 folders_synced: 0,
                 messages_observed: 0,
+                messages_flagged: 0,
+                messages_deleted: 0,
                 last_sync_started_at: started_at,
                 last_sync_finished_at: None,
                 last_error: None,
@@ -392,6 +400,8 @@ impl SyncWorker {
                     .collect(),
                 folders_synced,
                 messages_observed: 0,
+                messages_flagged: 0,
+                messages_deleted: 0,
                 last_sync_started_at: started_at,
                 last_sync_finished_at: None,
                 last_error: None,
@@ -401,6 +411,8 @@ impl SyncWorker {
 
         let idle_result = client.idle(Duration::from_millis(25)).await?;
         let mut folder_progress = HashMap::new();
+        let mut messages_flagged = 0;
+        let mut messages_deleted = 0;
         let observed_messages = match idle_result {
             IdleResult::NewMessages { .. } => {
                 let cursors = self
@@ -411,6 +423,14 @@ impl SyncWorker {
                 let envelopes = client.fetch_new_envelopes(&cursors).await?;
                 let observations = client.fetch_message_observations(&envelopes).await?;
                 folder_progress = folder_progress_from_observations(&envelopes, &observations);
+                messages_flagged = observations
+                    .iter()
+                    .filter(|observation| observation.is_starred)
+                    .count() as u32;
+                messages_deleted = observations
+                    .iter()
+                    .filter(|observation| observation.is_deleted)
+                    .count() as u32;
                 let context = SyncObservationContext {
                     message_repo: &self.message_repo,
                     thread_repo: &self.thread_repo,
@@ -454,6 +474,8 @@ impl SyncWorker {
                     .collect(),
                 folders_synced,
                 messages_observed,
+                messages_flagged,
+                messages_deleted,
                 last_sync_started_at: started_at,
                 last_sync_finished_at: Some(Utc::now()),
                 last_error: None,
@@ -1104,6 +1126,9 @@ mod tests {
             .unwrap();
         assert_eq!(inbox_progress.envelopes_discovered, 1);
         assert_eq!(inbox_progress.messages_applied, 1);
+        let status_summary = detailed_statuses.get("acc_sync").unwrap();
+        assert_eq!(status_summary.messages_flagged, 1);
+        assert_eq!(status_summary.messages_deleted, 1);
         assert_eq!(
             synced_folders
                 .iter()

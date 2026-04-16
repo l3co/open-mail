@@ -25,6 +25,8 @@ const fallbackSyncStatus: SyncStatusDetail = {
   ],
   foldersSynced: 2,
   messagesObserved: 3,
+  messagesFlagged: 1,
+  messagesDeleted: 1,
   lastSyncStartedAt: '2026-03-13T10:00:00Z',
   lastSyncFinishedAt: '2026-03-13T10:00:25Z',
   lastError: null

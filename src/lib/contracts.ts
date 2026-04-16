@@ -21,6 +21,8 @@ export type SyncStatusDetail = {
   folders: SyncFolderState[];
   foldersSynced: number;
   messagesObserved: number;
+  messagesFlagged: number;
+  messagesDeleted: number;
   lastSyncStartedAt: string | null;
   lastSyncFinishedAt: string | null;
   lastError: string | null;
