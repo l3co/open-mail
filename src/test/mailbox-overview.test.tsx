@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from '@/App';
 
@@ -46,5 +46,25 @@ describe('mailbox overview integration', () => {
 
     fireEvent.change(searchInput, { target: { value: 'no-match-term' } });
     expect(await screen.findByText('No results found')).toBeInTheDocument();
+  });
+
+  it('queues a composed message from the shell', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /new message/i }));
+    fireEvent.change(screen.getByLabelText(/to/i), { target: { value: 'review@example.com' } });
+    fireEvent.change(screen.getByLabelText(/subject/i), { target: { value: 'Review package' } });
+    fireEvent.change(screen.getByLabelText(/message/i), {
+      target: { value: 'This queued draft is ready for validation.' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^queue$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Queued 1 recipient(s)')).toBeInTheDocument();
+    });
   });
 });

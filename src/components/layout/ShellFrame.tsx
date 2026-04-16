@@ -1,3 +1,4 @@
+import { type FormEvent, useState } from 'react';
 import {
   BellDot,
   Command,
@@ -28,11 +29,15 @@ type ShellFrameProps = {
   selectedMessageId: string | null;
   selectedMessage: MessageRecord | null;
   syncStatusDetail: SyncStatusDetail | null;
+  outboxStatus: string;
+  isOutboxBusy: boolean;
   isMessagesLoading: boolean;
   onSelectFolder: (folderId: string) => void;
   onSearchQueryChange: (query: string) => void;
   onSelectThread: (threadId: string) => void;
   onSelectMessage: (messageId: string) => void;
+  onSendDraft: (draft: { to: string; subject: string; body: string }) => Promise<void>;
+  onFlushOutbox: () => Promise<void>;
 };
 
 const folderIconMap = {
@@ -85,12 +90,20 @@ export const ShellFrame = ({
   selectedMessageId,
   selectedMessage,
   syncStatusDetail,
+  outboxStatus,
+  isOutboxBusy,
   isMessagesLoading,
   onSelectFolder,
   onSearchQueryChange,
   onSelectThread,
-  onSelectMessage
+  onSelectMessage,
+  onSendDraft,
+  onFlushOutbox
 }: ShellFrameProps) => {
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [draftTo, setDraftTo] = useState('team@example.com');
+  const [draftSubject, setDraftSubject] = useState('Desktop alpha update');
+  const [draftBody, setDraftBody] = useState('Open Mail phase 2 is ready for the next review.');
   const activeFolder = folders.find((folder) => folder.id === activeFolderId) ?? null;
   const selectedMessageParticipants = selectedMessage?.to.map((contact) => contact.email).join(', ') ?? '';
   const threadPanelTitle = isSearchActive ? `Search results for "${searchQuery.trim()}"` : activeFolder?.name ?? 'Message stream';
@@ -100,6 +113,15 @@ export const ShellFrame = ({
   const syncMessagesLabel = syncStatusDetail
     ? `${syncStatusDetail.messagesObserved} observed, ${syncStatusDetail.messagesDeleted} removed`
     : '0 observed';
+  const submitDraft = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await onSendDraft({
+      to: draftTo,
+      subject: draftSubject,
+      body: draftBody
+    });
+    setIsComposerOpen(false);
+  };
 
   return (
     <div className="shell-root">
@@ -115,10 +137,67 @@ export const ShellFrame = ({
           </div>
         </div>
 
-        <button className="compose-button" type="button">
+        <button
+          className="compose-button"
+          onClick={() => setIsComposerOpen((current) => !current)}
+          type="button"
+        >
           <PencilLine size={16} />
-          New message
+          {isComposerOpen ? 'Close composer' : 'New message'}
         </button>
+
+        {isComposerOpen ? (
+          <form className="composer-card" onSubmit={submitDraft}>
+            <label>
+              <span>To</span>
+              <input
+                onChange={(event) => setDraftTo(event.target.value)}
+                placeholder="team@example.com"
+                required
+                type="email"
+                value={draftTo}
+              />
+            </label>
+            <label>
+              <span>Subject</span>
+              <input
+                onChange={(event) => setDraftSubject(event.target.value)}
+                placeholder="What is this about?"
+                required
+                value={draftSubject}
+              />
+            </label>
+            <label>
+              <span>Message</span>
+              <textarea
+                onChange={(event) => setDraftBody(event.target.value)}
+                placeholder="Write the update..."
+                required
+                rows={5}
+                value={draftBody}
+              />
+            </label>
+            <div className="composer-actions">
+              <button className="composer-secondary" disabled={isOutboxBusy} onClick={onFlushOutbox} type="button">
+                Flush outbox
+              </button>
+              <button className="composer-primary" disabled={isOutboxBusy} type="submit">
+                {isOutboxBusy ? 'Working...' : 'Queue'}
+              </button>
+            </div>
+            <p className="composer-status" role="status">
+              {outboxStatus}
+            </p>
+          </form>
+        ) : (
+          <div className="outbox-mini-card">
+            <span>Outbox</span>
+            <strong>{outboxStatus}</strong>
+            <button disabled={isOutboxBusy} onClick={onFlushOutbox} type="button">
+              {isOutboxBusy ? 'Sending...' : 'Flush queue'}
+            </button>
+          </div>
+        )}
 
         <nav className="folder-nav" aria-label="Mailbox folders">
           {folders.map((folder) => {
