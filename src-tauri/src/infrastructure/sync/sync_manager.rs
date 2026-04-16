@@ -25,8 +25,7 @@ use crate::domain::{
 
 use super::{
     imap_client::{FakeImapClientFactory, IdleResult, SharedImapClientFactory},
-    Credentials, SyncError, SyncFolderState, SyncMessageObservation, SyncPhase,
-    SyncStatusSnapshot,
+    Credentials, SyncError, SyncFolderState, SyncMessageObservation, SyncPhase, SyncStatusSnapshot,
 };
 
 pub trait SyncEventEmitter: Send + Sync {
@@ -195,7 +194,13 @@ impl SyncManager {
     }
 
     pub async fn stop_all(&self) -> Result<(), SyncError> {
-        let account_ids = self.workers.lock().await.keys().cloned().collect::<Vec<_>>();
+        let account_ids = self
+            .workers
+            .lock()
+            .await
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>();
 
         for account_id in account_ids {
             self.stop_sync(&account_id).await?;
@@ -502,10 +507,11 @@ async fn reconcile_folder_state(
     let mut changed_folders = Vec::new();
 
     for observed_folder in observed_folders {
-        let Some(existing_folder) = persisted_folders
-            .iter()
-            .find(|folder| folder.path.eq_ignore_ascii_case(&observed_folder.folder.path))
-        else {
+        let Some(existing_folder) = persisted_folders.iter().find(|folder| {
+            folder
+                .path
+                .eq_ignore_ascii_case(&observed_folder.folder.path)
+        }) else {
             continue;
         };
 
@@ -577,12 +583,76 @@ async fn apply_message_observations(
             .map(|folder| folder.id.clone())
             .unwrap_or_else(|| message.folder_id.clone());
 
+        if observation.is_deleted {
+            context
+                .message_repo
+                .delete(&message.id)
+                .await
+                .map_err(|error| SyncError::Operation(error.to_string()))?;
+            changed_message_ids.push(message.id.clone());
+
+            let Some(mut thread) = context
+                .thread_repo
+                .find_by_id(&observation.thread_id)
+                .await
+                .map_err(|error| SyncError::Operation(error.to_string()))?
+            else {
+                continue;
+            };
+
+            let thread_messages = context
+                .message_repo
+                .find_by_thread(&thread.id)
+                .await
+                .map_err(|error| SyncError::Operation(error.to_string()))?;
+            thread.update_from_messages(&thread_messages);
+            thread.updated_at = Utc::now();
+            context
+                .thread_repo
+                .save(&thread)
+                .await
+                .map_err(|error| SyncError::Operation(error.to_string()))?;
+
+            if !changed_thread_ids.contains(&thread.id) {
+                changed_thread_ids.push(thread.id.clone());
+            }
+
+            let cursor = SyncCursor {
+                account_id: context.account_id.to_string(),
+                folder_id,
+                folder_path: observation.folder_path,
+                uid_validity: Some(observation.uid_validity),
+                last_seen_uid: Some(observation.uid),
+                last_message_id: Some(message.id.clone()),
+                last_message_observed_at: Some(observation.observed_at),
+                last_thread_id: Some(thread.id.clone()),
+                observed_message_count: changed_message_ids.len() as u32,
+                last_sync_started_at: context.sync_started_at,
+                last_sync_finished_at: Some(Utc::now()),
+                updated_at: Utc::now(),
+            };
+            context
+                .sync_cursor_repo
+                .save(&cursor)
+                .await
+                .map_err(|error| SyncError::Operation(error.to_string()))?;
+
+            continue;
+        }
+
         message.folder_id = folder_id;
         message.subject = observation.subject.clone();
         message.snippet = observation.snippet.clone();
-        message.body = format!("<p>{}</p>", observation.plain_text.as_deref().unwrap_or(&observation.snippet));
+        message.body = format!(
+            "<p>{}</p>",
+            observation
+                .plain_text
+                .as_deref()
+                .unwrap_or(&observation.snippet)
+        );
         message.plain_text = observation.plain_text.clone();
         message.is_unread = observation.is_unread;
+        message.is_starred = observation.is_starred;
         message.date = observation.observed_at;
         message.updated_at = observation.observed_at;
         for (key, value) in observation.headers {
@@ -705,13 +775,8 @@ mod tests {
             models::account::{
                 Account, AccountProvider, ConnectionSettings, SecurityType, SyncState,
             },
-            models::{
-                attachment::Attachment,
-                contact::Contact,
-                message::Message,
-                thread::Thread,
-            },
             models::folder::{Folder, FolderRole},
+            models::{attachment::Attachment, contact::Contact, message::Message, thread::Thread},
             repositories::{
                 AccountRepository, FolderRepository, MessageRepository, SyncCursorRepository,
                 ThreadRepository,
@@ -797,13 +862,7 @@ mod tests {
         ]
     }
 
-    fn sample_contact(
-        id: &str,
-        account_id: &str,
-        name: &str,
-        email: &str,
-        is_me: bool,
-    ) -> Contact {
+    fn sample_contact(id: &str, account_id: &str, name: &str, email: &str, is_me: bool) -> Contact {
         let timestamp = chrono::DateTime::parse_from_rfc3339("2026-03-13T10:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc);
@@ -961,11 +1020,10 @@ mod tests {
             .unwrap()
             .as_nanos();
         let counter = NEXT_DB_ID.fetch_add(1, Ordering::Relaxed);
-        let database_path =
-            std::env::temp_dir().join(format!(
-                "open-mail-sync-{}-{unique_suffix}-{counter}.db",
-                std::process::id()
-            ));
+        let database_path = std::env::temp_dir().join(format!(
+            "open-mail-sync-{}-{unique_suffix}-{counter}.db",
+            std::process::id()
+        ));
         let db = Database::new(&database_path).unwrap();
         db.run_migrations().unwrap();
 
@@ -1015,8 +1073,7 @@ mod tests {
             message_repo,
             sync_cursor_repo,
             emitter,
-        ) =
-            build_manager().await;
+        ) = build_manager().await;
         let account = account_repo.find_by_id("acc_sync").await.unwrap().unwrap();
 
         manager.start_sync(account).await.unwrap();
@@ -1025,7 +1082,9 @@ mod tests {
         let persisted = account_repo.find_by_id("acc_sync").await.unwrap().unwrap();
         let synced_folders = folder_repo.find_by_account("acc_sync").await.unwrap();
         let synced_thread = thread_repo.find_by_id("thr_1").await.unwrap().unwrap();
+        let deleted_thread = thread_repo.find_by_id("thr_2").await.unwrap().unwrap();
         let synced_message = message_repo.find_by_id("msg_1").await.unwrap().unwrap();
+        let deleted_message = message_repo.find_by_id("msg_2").await.unwrap();
         let synced_cursor = sync_cursor_repo
             .find_by_folder("acc_sync", "fld_inbox")
             .await
@@ -1053,7 +1112,11 @@ mod tests {
             Some((2, 12))
         );
         assert!(synced_thread.snippet.contains("Sync confirmado"));
+        assert!(synced_thread.is_starred);
+        assert_eq!(deleted_thread.message_count, 0);
+        assert!(deleted_message.is_none());
         assert!(synced_message.headers.contains_key("x-open-mail-sync"));
+        assert!(synced_message.is_starred);
         assert_eq!(synced_cursor.uid_validity, Some(1));
         assert_eq!(synced_cursor.last_seen_uid, Some(101));
         assert_eq!(synced_cursor.last_message_id.as_deref(), Some("msg_1"));

@@ -16,8 +16,14 @@ pub enum SyncError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Credentials {
-    Password { username: String, password: String },
-    OAuth2 { username: String, access_token: String },
+    Password {
+        username: String,
+        password: String,
+    },
+    OAuth2 {
+        username: String,
+        access_token: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -52,6 +58,8 @@ pub struct SyncMessageObservation {
     pub plain_text: Option<String>,
     pub observed_at: DateTime<Utc>,
     pub is_unread: bool,
+    pub is_starred: bool,
+    pub is_deleted: bool,
     pub headers: HashMap<String, String>,
 }
 

@@ -33,6 +33,8 @@ pub struct ImapEnvelope {
     pub subject: String,
     pub observed_at: DateTime<Utc>,
     pub is_seen: bool,
+    pub is_flagged: bool,
+    pub is_deleted: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -87,6 +89,8 @@ fn fake_envelopes(observed_at: DateTime<Utc>) -> Vec<ImapEnvelope> {
             subject: "Premium motion system approved".into(),
             observed_at,
             is_seen: false,
+            is_flagged: true,
+            is_deleted: false,
         },
         ImapEnvelope {
             uid: 205,
@@ -97,6 +101,8 @@ fn fake_envelopes(observed_at: DateTime<Utc>) -> Vec<ImapEnvelope> {
             subject: "Rust health-check online".into(),
             observed_at,
             is_seen: true,
+            is_flagged: false,
+            is_deleted: true,
         },
     ]
 }
@@ -123,6 +129,8 @@ fn fake_observation_from_envelope(envelope: &ImapEnvelope) -> SyncMessageObserva
         plain_text: Some(snippet.into()),
         observed_at: envelope.observed_at,
         is_unread: !envelope.is_seen,
+        is_starred: envelope.is_flagged,
+        is_deleted: envelope.is_deleted,
         headers: HashMap::from([("x-open-mail-sync".into(), "confirmed".into())]),
     }
 }
@@ -201,7 +209,9 @@ impl ImapClient for FakeImapClient {
             .into_iter()
             .filter(|envelope| {
                 !cursors.iter().any(|cursor| {
-                    cursor.folder_path.eq_ignore_ascii_case(&envelope.folder_path)
+                    cursor
+                        .folder_path
+                        .eq_ignore_ascii_case(&envelope.folder_path)
                         && cursor.uid_validity == Some(envelope.uid_validity)
                         && cursor
                             .last_seen_uid
@@ -318,5 +328,7 @@ mod tests {
         assert_eq!(observations[0].uid, envelopes[0].uid);
         assert_eq!(observations[0].message_id, envelopes[0].message_id);
         assert!(!observations[0].is_unread);
+        assert!(!observations[0].is_starred);
+        assert!(observations[0].is_deleted);
     }
 }
