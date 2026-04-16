@@ -8,3 +8,7 @@ target
 src-tauri/target
 tsconfig.tsbuildinfo
 .idea
+.vscode
+*.log
+*.lock
+
