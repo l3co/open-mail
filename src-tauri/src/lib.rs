@@ -6,9 +6,9 @@ pub mod plugins;
 use std::{path::PathBuf, sync::Arc};
 
 use commands::{
-    enqueue_outbox_message, force_sync, get_message, get_sync_status, get_sync_status_detail,
-    health_check, list_accounts, list_folders, list_messages, list_threads, mailbox_overview,
-    search_threads, start_sync, stop_sync,
+    enqueue_outbox_message, flush_outbox, force_sync, get_message, get_sync_status,
+    get_sync_status_detail, health_check, list_accounts, list_folders, list_messages, list_threads,
+    mailbox_overview, search_threads, start_sync, stop_sync,
 };
 use domain::events::DomainEvent;
 use domain::repositories::{
@@ -85,7 +85,8 @@ pub fn run() {
             force_sync,
             get_sync_status,
             get_sync_status_detail,
-            enqueue_outbox_message
+            enqueue_outbox_message,
+            flush_outbox
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open Mail");

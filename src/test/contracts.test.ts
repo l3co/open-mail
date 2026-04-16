@@ -4,6 +4,7 @@ import type {
   EnqueueOutboxMessageRequest,
   MailboxReadModel,
   OutboxMessage,
+  OutboxSendReport,
   SyncStatusDetail
 } from '@lib/contracts';
 
@@ -101,5 +102,16 @@ describe('contracts', () => {
 
     expect(queued.mimeMessage.to[0]?.email).toBe('team@example.com');
     expect(queued.status).toBe('queued');
+  });
+
+  it('supports outbox send reports for smtp phase 2', () => {
+    const report: OutboxSendReport = {
+      accountId: 'acc_demo',
+      attempted: 2,
+      sent: 1,
+      failed: 1
+    };
+
+    expect(report.attempted).toBe(report.sent + report.failed);
   });
 });

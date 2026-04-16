@@ -4,6 +4,7 @@ import type {
   MailboxOverview,
   MessageRecord,
   OutboxMessage,
+  OutboxSendReport,
   SyncStatusDetail,
   ThreadSummary
 } from '@lib/contracts';
@@ -38,7 +39,9 @@ export const api = {
   },
   outbox: {
     enqueue: (request: EnqueueOutboxMessageRequest) =>
-      invokeOrThrow<OutboxMessage>('enqueue_outbox_message', { request })
+      invokeOrThrow<OutboxMessage>('enqueue_outbox_message', { request }),
+    flush: (accountId: string) =>
+      invokeOrThrow<OutboxSendReport>('flush_outbox', { accountId })
   }
 };
 

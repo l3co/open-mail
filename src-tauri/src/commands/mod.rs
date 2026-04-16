@@ -11,7 +11,8 @@ use crate::{
     },
     domain::read_models::{MailboxOverview, ThreadSummary},
     infrastructure::sync::{
-        MailAddress, MimeAttachment, MimeMessage, SyncError, SyncStatusSnapshot,
+        drain_outbox_for_account, FakeSmtpClient, MailAddress, MimeAttachment, MimeMessage,
+        OutboxSendReport, SyncError, SyncStatusSnapshot,
     },
     AppState,
 };
@@ -191,6 +192,21 @@ async fn enqueue_outbox_message_for_state(
     Ok(outbox_message)
 }
 
+async fn flush_outbox_for_state(
+    state: &AppState,
+    account_id: &str,
+) -> Result<OutboxSendReport, String> {
+    let mut smtp_client = FakeSmtpClient::default();
+    drain_outbox_for_account(
+        state.account_repo.as_ref(),
+        state.outbox_repo.as_ref(),
+        &mut smtp_client,
+        account_id,
+    )
+    .await
+    .map_err(|error| error.to_string())
+}
+
 async fn mailbox_overview_for_state(state: &AppState) -> Result<MailboxOverview, String> {
     let account = list_accounts_for_state(state)
         .await?
@@ -311,6 +327,14 @@ pub async fn enqueue_outbox_message(
     request: EnqueueOutboxMessageRequest,
 ) -> Result<OutboxMessage, String> {
     enqueue_outbox_message_for_state(&state, request).await
+}
+
+#[tauri::command]
+pub async fn flush_outbox(
+    state: State<'_, AppState>,
+    account_id: String,
+) -> Result<OutboxSendReport, String> {
+    flush_outbox_for_state(&state, &account_id).await
 }
 
 pub async fn seed_demo_data(state: &AppState) -> Result<(), String> {
@@ -614,10 +638,11 @@ mod tests {
     };
 
     use super::{
-        enqueue_outbox_message_for_state, force_sync_for_state, get_message_for_state,
-        get_sync_status_detail_for_state, get_sync_status_for_state, list_messages_for_state,
-        list_threads_for_state, mailbox_overview_for_state, search_threads_for_state,
-        seed_demo_data, start_sync_for_state, stop_sync_for_state, EnqueueOutboxMessageRequest,
+        enqueue_outbox_message_for_state, flush_outbox_for_state, force_sync_for_state,
+        get_message_for_state, get_sync_status_detail_for_state, get_sync_status_for_state,
+        list_messages_for_state, list_threads_for_state, mailbox_overview_for_state,
+        search_threads_for_state, seed_demo_data, start_sync_for_state, stop_sync_for_state,
+        EnqueueOutboxMessageRequest,
     };
     use crate::{
         domain::models::{account::SyncState, outbox::OutboxStatus},
@@ -842,5 +867,44 @@ mod tests {
         assert_eq!(persisted.status, OutboxStatus::Queued);
         assert_eq!(persisted.mime_message.to[0].email, "team@example.com");
         assert_eq!(queued_messages.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn flush_outbox_command_sends_queued_messages() {
+        let state = build_test_state();
+        seed_demo_data(&state).await.unwrap();
+
+        let queued = enqueue_outbox_message_for_state(
+            &state,
+            EnqueueOutboxMessageRequest {
+                account_id: "acc_demo".into(),
+                from: mail_address("leco@example.com"),
+                to: vec![mail_address("team@example.com")],
+                cc: vec![],
+                bcc: vec![],
+                reply_to: None,
+                subject: "Desktop alpha".into(),
+                html_body: "<p>Ready</p>".into(),
+                plain_body: Some("Ready".into()),
+                in_reply_to: None,
+                references: vec![],
+                attachments: vec![],
+            },
+        )
+        .await
+        .unwrap();
+
+        let report = flush_outbox_for_state(&state, "acc_demo").await.unwrap();
+        let persisted = state
+            .outbox_repo
+            .find_by_id(&queued.id)
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(report.attempted, 1);
+        assert_eq!(report.sent, 1);
+        assert_eq!(report.failed, 0);
+        assert_eq!(persisted.status, OutboxStatus::Sent);
     }
 }

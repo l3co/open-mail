@@ -83,6 +83,13 @@ export type EnqueueOutboxMessageRequest = {
   accountId: string;
 } & MimeMessage;
 
+export type OutboxSendReport = {
+  accountId: string;
+  attempted: number;
+  sent: number;
+  failed: number;
+};
+
 export type ThreadSummary = {
   id: string;
   subject: string;
