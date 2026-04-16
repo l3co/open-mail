@@ -1,16 +1,17 @@
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
 use crate::domain::models::account::ConnectionSettings;
 
 use super::{Credentials, SyncError};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MailAddress {
     pub name: Option<String>,
     pub email: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MimeAttachment {
     pub filename: String,
     pub content_type: String,
@@ -19,7 +20,7 @@ pub struct MimeAttachment {
     pub content_id: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MimeMessage {
     pub from: MailAddress,
     pub to: Vec<MailAddress>,

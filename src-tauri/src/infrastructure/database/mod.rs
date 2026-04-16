@@ -10,6 +10,7 @@ use crate::domain::errors::DomainError;
 
 const INITIAL_MIGRATION: &str = include_str!("migrations/001_initial_schema.sql");
 const SYNC_CURSOR_MIGRATION: &str = include_str!("migrations/002_sync_cursors.sql");
+const OUTBOX_MESSAGES_MIGRATION: &str = include_str!("migrations/004_outbox_messages.sql");
 pub mod repositories;
 
 #[derive(Debug, Clone)]
@@ -43,6 +44,9 @@ impl Database {
             .map_err(|error| DomainError::Database(error.to_string()))?;
         connection
             .execute_batch(SYNC_CURSOR_MIGRATION)
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        connection
+            .execute_batch(OUTBOX_MESSAGES_MIGRATION)
             .map_err(|error| DomainError::Database(error.to_string()))?;
         ensure_column(&connection, "sync_cursors", "uid_validity", "INTEGER")?;
         ensure_column(&connection, "sync_cursors", "last_seen_uid", "INTEGER")?;
@@ -105,9 +109,8 @@ mod tests {
 
     use super::{
         repositories::{
-            account_repository::SqliteAccountRepository,
-            folder_repository::SqliteFolderRepository,
-            message_repository::SqliteMessageRepository,
+            account_repository::SqliteAccountRepository, folder_repository::SqliteFolderRepository,
+            message_repository::SqliteMessageRepository, outbox_repository::SqliteOutboxRepository,
             sync_cursor_repository::SqliteSyncCursorRepository,
             thread_repository::SqliteThreadRepository,
         },
@@ -119,14 +122,17 @@ mod tests {
         models::contact::Contact,
         models::folder::{Folder, FolderRole},
         models::message::Message,
+        models::outbox::{OutboxMessage, OutboxStatus},
         models::sync_cursor::SyncCursor,
         models::thread::Thread,
         repositories::AccountRepository,
         repositories::FolderRepository,
         repositories::MessageRepository,
+        repositories::OutboxRepository,
         repositories::SyncCursorRepository,
         repositories::ThreadRepository,
     };
+    use crate::infrastructure::sync::{MailAddress, MimeMessage};
 
     fn unique_database_path(prefix: &str) -> std::path::PathBuf {
         let unique_suffix = SystemTime::now()
@@ -322,7 +328,9 @@ mod tests {
         database.run_migrations().unwrap();
 
         let connection = database.connection().unwrap();
-        let mut statement = connection.prepare("PRAGMA table_info(sync_cursors)").unwrap();
+        let mut statement = connection
+            .prepare("PRAGMA table_info(sync_cursors)")
+            .unwrap();
         let columns = statement
             .query_map([], |row| row.get::<_, String>(1))
             .unwrap()
@@ -417,7 +425,13 @@ mod tests {
             ]
         );
         assert_eq!(folder_threads.len(), 1);
-        assert_eq!(thread_repo.count_by_folder("acc_1", "fld_starred").await.unwrap(), 1);
+        assert_eq!(
+            thread_repo
+                .count_by_folder("acc_1", "fld_starred")
+                .await
+                .unwrap(),
+            1
+        );
         assert_eq!(
             thread_repo
                 .count_unread_by_folder("acc_1", "fld_starred")
@@ -465,7 +479,11 @@ mod tests {
         assert!(account_repo.find_by_id("acc_1").await.unwrap().is_none());
         assert!(thread_repo.find_by_id("thr_1").await.unwrap().is_none());
         assert!(message_repo.find_by_id("msg_1").await.unwrap().is_none());
-        assert!(folder_repo.find_by_account("acc_1").await.unwrap().is_empty());
+        assert!(folder_repo
+            .find_by_account("acc_1")
+            .await
+            .unwrap()
+            .is_empty());
     }
 
     #[tokio::test]
@@ -514,5 +532,57 @@ mod tests {
         assert_eq!(persisted.last_message_id.as_deref(), Some("msg_2"));
         assert_eq!(persisted.observed_message_count, 2);
         assert_eq!(by_account.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn persists_outbox_messages_by_status() {
+        let database_path = unique_database_path("open-mail-outbox");
+        let database = Database::new(&database_path).unwrap();
+        database.run_migrations().unwrap();
+
+        let account_repo = SqliteAccountRepository::new(database.clone());
+        let outbox_repo = SqliteOutboxRepository::new(database.clone());
+        account_repo.save(&sample_account()).await.unwrap();
+
+        let queued = OutboxMessage {
+            id: "out_1".into(),
+            account_id: "acc_1".into(),
+            mime_message: MimeMessage {
+                from: MailAddress {
+                    name: None,
+                    email: "leco@example.com".into(),
+                },
+                to: vec![MailAddress {
+                    name: Some("Team".into()),
+                    email: "team@example.com".into(),
+                }],
+                cc: vec![],
+                bcc: vec![],
+                reply_to: None,
+                subject: "Queued message".into(),
+                html_body: "<p>Hello</p>".into(),
+                plain_body: Some("Hello".into()),
+                in_reply_to: None,
+                references: vec![],
+                attachments: vec![],
+            },
+            status: OutboxStatus::Queued,
+            retry_count: 0,
+            last_error: None,
+            queued_at: sample_timestamp(),
+            updated_at: sample_timestamp(),
+        };
+
+        outbox_repo.save(&queued).await.unwrap();
+
+        let persisted = outbox_repo.find_by_id("out_1").await.unwrap().unwrap();
+        let queued_messages = outbox_repo
+            .find_by_status("acc_1", OutboxStatus::Queued)
+            .await
+            .unwrap();
+
+        assert_eq!(persisted.status, OutboxStatus::Queued);
+        assert_eq!(persisted.mime_message.subject, "Queued message");
+        assert_eq!(queued_messages.len(), 1);
     }
 }

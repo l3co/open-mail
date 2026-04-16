@@ -39,6 +39,50 @@ export type DomainEvent =
   | { type: 'account-added'; accountId: string }
   | { type: 'account-removed'; accountId: string };
 
+export type MailAddress = {
+  name: string | null;
+  email: string;
+};
+
+export type MimeAttachment = {
+  filename: string;
+  contentType: string;
+  data: number[];
+  isInline: boolean;
+  contentId: string | null;
+};
+
+export type MimeMessage = {
+  from: MailAddress;
+  to: MailAddress[];
+  cc: MailAddress[];
+  bcc: MailAddress[];
+  replyTo: MailAddress | null;
+  subject: string;
+  htmlBody: string;
+  plainBody: string | null;
+  inReplyTo: string | null;
+  references: string[];
+  attachments: MimeAttachment[];
+};
+
+export type OutboxStatus = 'queued' | 'sending' | 'sent' | 'failed';
+
+export type OutboxMessage = {
+  id: string;
+  accountId: string;
+  mimeMessage: MimeMessage;
+  status: OutboxStatus;
+  retryCount: number;
+  lastError: string | null;
+  queuedAt: string;
+  updatedAt: string;
+};
+
+export type EnqueueOutboxMessageRequest = {
+  accountId: string;
+} & MimeMessage;
+
 export type ThreadSummary = {
   id: string;
   subject: string;

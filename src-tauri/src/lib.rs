@@ -6,19 +6,20 @@ pub mod plugins;
 use std::{path::PathBuf, sync::Arc};
 
 use commands::{
-    force_sync, get_message, get_sync_status, get_sync_status_detail, health_check,
-    list_accounts, list_folders, list_messages, list_threads, mailbox_overview, search_threads,
-    start_sync, stop_sync,
+    enqueue_outbox_message, force_sync, get_message, get_sync_status, get_sync_status_detail,
+    health_check, list_accounts, list_folders, list_messages, list_threads, mailbox_overview,
+    search_threads, start_sync, stop_sync,
 };
 use domain::events::DomainEvent;
 use domain::repositories::{
-    AccountRepository, FolderRepository, MessageRepository, SyncCursorRepository, ThreadRepository,
+    AccountRepository, FolderRepository, MessageRepository, OutboxRepository, SyncCursorRepository,
+    ThreadRepository,
 };
 use infrastructure::{
     database::{
         repositories::{
             account_repository::SqliteAccountRepository, folder_repository::SqliteFolderRepository,
-            message_repository::SqliteMessageRepository,
+            message_repository::SqliteMessageRepository, outbox_repository::SqliteOutboxRepository,
             sync_cursor_repository::SqliteSyncCursorRepository,
             thread_repository::SqliteThreadRepository,
         },
@@ -34,6 +35,7 @@ pub struct AppState {
     pub folder_repo: Arc<dyn FolderRepository>,
     pub thread_repo: Arc<dyn ThreadRepository>,
     pub message_repo: Arc<dyn MessageRepository>,
+    pub outbox_repo: Arc<dyn OutboxRepository>,
     pub sync_cursor_repo: Arc<dyn SyncCursorRepository>,
     pub sync_manager: Arc<SyncManager>,
 }
@@ -82,7 +84,8 @@ pub fn run() {
             stop_sync,
             force_sync,
             get_sync_status,
-            get_sync_status_detail
+            get_sync_status_detail,
+            enqueue_outbox_message
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open Mail");
@@ -99,6 +102,7 @@ fn build_app_state() -> Result<AppState, String> {
     let thread_repo: Arc<dyn ThreadRepository> = Arc::new(SqliteThreadRepository::new(db.clone()));
     let message_repo: Arc<dyn MessageRepository> =
         Arc::new(SqliteMessageRepository::new(db.clone()));
+    let outbox_repo: Arc<dyn OutboxRepository> = Arc::new(SqliteOutboxRepository::new(db.clone()));
     let sync_cursor_repo: Arc<dyn SyncCursorRepository> =
         Arc::new(SqliteSyncCursorRepository::new(db.clone()));
     let sync_manager = Arc::new(SyncManager::new(
@@ -115,6 +119,7 @@ fn build_app_state() -> Result<AppState, String> {
         folder_repo,
         thread_repo,
         message_repo,
+        outbox_repo,
         sync_cursor_repo,
         sync_manager,
     })

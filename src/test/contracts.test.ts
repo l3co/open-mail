@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { DomainEvent, MailboxReadModel, SyncStatusDetail } from '@lib/contracts';
+import type {
+  DomainEvent,
+  EnqueueOutboxMessageRequest,
+  MailboxReadModel,
+  OutboxMessage,
+  SyncStatusDetail
+} from '@lib/contracts';
 
 describe('contracts', () => {
   it('supports mailbox read models for future IPC hydration', () => {
@@ -65,5 +71,35 @@ describe('contracts', () => {
     expect(status.folders[0]?.displayName).toBe('Inbox');
     expect(status.folders[0]?.messagesApplied).toBe(1);
     expect(status.messagesDeleted).toBe(1);
+  });
+
+  it('supports outbox enqueue contracts for smtp phase 2', () => {
+    const request: EnqueueOutboxMessageRequest = {
+      accountId: 'acc_demo',
+      from: { name: null, email: 'leco@example.com' },
+      to: [{ name: 'Team', email: 'team@example.com' }],
+      cc: [],
+      bcc: [],
+      replyTo: null,
+      subject: 'Desktop alpha',
+      htmlBody: '<p>Ready</p>',
+      plainBody: 'Ready',
+      inReplyTo: null,
+      references: [],
+      attachments: []
+    };
+    const queued: OutboxMessage = {
+      id: 'out_1',
+      accountId: request.accountId,
+      mimeMessage: request,
+      status: 'queued',
+      retryCount: 0,
+      lastError: null,
+      queuedAt: '2026-03-13T10:00:00Z',
+      updatedAt: '2026-03-13T10:00:00Z'
+    };
+
+    expect(queued.mimeMessage.to[0]?.email).toBe('team@example.com');
+    expect(queued.status).toBe('queued');
   });
 });

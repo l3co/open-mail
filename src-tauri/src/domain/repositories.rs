@@ -7,6 +7,7 @@ use crate::domain::{
         contact::Contact,
         folder::{Folder, FolderRole},
         message::Message,
+        outbox::{OutboxMessage, OutboxStatus},
         sync_cursor::SyncCursor,
         thread::Thread,
     },
@@ -86,4 +87,15 @@ pub trait SyncCursorRepository: Send + Sync {
         folder_id: &str,
     ) -> Result<Option<SyncCursor>, DomainError>;
     async fn save(&self, cursor: &SyncCursor) -> Result<(), DomainError>;
+}
+
+#[async_trait]
+pub trait OutboxRepository: Send + Sync {
+    async fn find_by_id(&self, id: &str) -> Result<Option<OutboxMessage>, DomainError>;
+    async fn find_by_status(
+        &self,
+        account_id: &str,
+        status: OutboxStatus,
+    ) -> Result<Vec<OutboxMessage>, DomainError>;
+    async fn save(&self, message: &OutboxMessage) -> Result<(), DomainError>;
 }

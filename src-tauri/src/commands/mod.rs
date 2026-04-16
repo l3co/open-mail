@@ -1,16 +1,37 @@
 use tauri::State;
+use uuid::Uuid;
 
 use crate::{
     domain::models::{
         account::{Account, AccountProvider, ConnectionSettings, SecurityType, SyncState},
         folder::{Folder, FolderRole},
         message::Message,
+        outbox::{OutboxMessage, OutboxStatus},
         thread::Thread,
     },
     domain::read_models::{MailboxOverview, ThreadSummary},
-    infrastructure::sync::{SyncError, SyncStatusSnapshot},
+    infrastructure::sync::{
+        MailAddress, MimeAttachment, MimeMessage, SyncError, SyncStatusSnapshot,
+    },
     AppState,
 };
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnqueueOutboxMessageRequest {
+    pub account_id: String,
+    pub from: MailAddress,
+    pub to: Vec<MailAddress>,
+    pub cc: Vec<MailAddress>,
+    pub bcc: Vec<MailAddress>,
+    pub reply_to: Option<MailAddress>,
+    pub subject: String,
+    pub html_body: String,
+    pub plain_body: Option<String>,
+    pub in_reply_to: Option<String>,
+    pub references: Vec<String>,
+    pub attachments: Vec<MimeAttachment>,
+}
 
 async fn list_accounts_for_state(state: &AppState) -> Result<Vec<Account>, String> {
     state
@@ -61,7 +82,10 @@ async fn search_threads_for_state(
         .map_err(|error| error.to_string())
 }
 
-async fn list_messages_for_state(state: &AppState, thread_id: &str) -> Result<Vec<Message>, String> {
+async fn list_messages_for_state(
+    state: &AppState,
+    thread_id: &str,
+) -> Result<Vec<Message>, String> {
     state
         .message_repo
         .find_by_thread(thread_id)
@@ -111,7 +135,9 @@ async fn force_sync_for_state(state: &AppState, account_id: &str) -> Result<(), 
         .map_err(|error| error.to_string())
 }
 
-async fn get_sync_status_for_state(state: &AppState) -> Result<std::collections::HashMap<String, SyncState>, String> {
+async fn get_sync_status_for_state(
+    state: &AppState,
+) -> Result<std::collections::HashMap<String, SyncState>, String> {
     Ok(state.sync_manager.status_snapshot().await)
 }
 
@@ -119,6 +145,50 @@ async fn get_sync_status_detail_for_state(
     state: &AppState,
 ) -> Result<std::collections::HashMap<String, SyncStatusSnapshot>, String> {
     Ok(state.sync_manager.detailed_status_snapshot().await)
+}
+
+async fn enqueue_outbox_message_for_state(
+    state: &AppState,
+    request: EnqueueOutboxMessageRequest,
+) -> Result<OutboxMessage, String> {
+    state
+        .account_repo
+        .find_by_id(&request.account_id)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| format!("account not found: {}", request.account_id))?;
+
+    let now = chrono::Utc::now();
+    let outbox_message = OutboxMessage {
+        id: format!("out_{}", Uuid::new_v4()),
+        account_id: request.account_id,
+        mime_message: MimeMessage {
+            from: request.from,
+            to: request.to,
+            cc: request.cc,
+            bcc: request.bcc,
+            reply_to: request.reply_to,
+            subject: request.subject,
+            html_body: request.html_body,
+            plain_body: request.plain_body,
+            in_reply_to: request.in_reply_to,
+            references: request.references,
+            attachments: request.attachments,
+        },
+        status: OutboxStatus::Queued,
+        retry_count: 0,
+        last_error: None,
+        queued_at: now,
+        updated_at: now,
+    };
+
+    state
+        .outbox_repo
+        .save(&outbox_message)
+        .await
+        .map_err(|error| error.to_string())?;
+
+    Ok(outbox_message)
 }
 
 async fn mailbox_overview_for_state(state: &AppState) -> Result<MailboxOverview, String> {
@@ -233,6 +303,14 @@ pub async fn get_sync_status_detail(
     state: State<'_, AppState>,
 ) -> Result<std::collections::HashMap<String, SyncStatusSnapshot>, String> {
     get_sync_status_detail_for_state(&state).await
+}
+
+#[tauri::command]
+pub async fn enqueue_outbox_message(
+    state: State<'_, AppState>,
+    request: EnqueueOutboxMessageRequest,
+) -> Result<OutboxMessage, String> {
+    enqueue_outbox_message_for_state(&state, request).await
 }
 
 pub async fn seed_demo_data(state: &AppState) -> Result<(), String> {
@@ -365,8 +443,7 @@ pub async fn seed_demo_data(state: &AppState) -> Result<(), String> {
             id: "thr_3".into(),
             account_id: account.id.clone(),
             subject: "Ship notes for desktop alpha".into(),
-            snippet: "Build desktop alpha aprovado, agora seguimos com pacote de release."
-                .into(),
+            snippet: "Build desktop alpha aprovado, agora seguimos com pacote de release.".into(),
             message_count: 1,
             participant_ids: vec!["release@example.com".into()],
             folder_ids: vec!["fld_sent".into()],
@@ -531,22 +608,22 @@ pub async fn seed_demo_data(state: &AppState) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use std::{
-        sync::Arc,
         sync::atomic::{AtomicU64, Ordering},
+        sync::Arc,
         time::{SystemTime, UNIX_EPOCH},
     };
 
     use super::{
-        force_sync_for_state, get_message_for_state, get_sync_status_detail_for_state,
-        get_sync_status_for_state, list_messages_for_state, list_threads_for_state,
-        mailbox_overview_for_state, search_threads_for_state, seed_demo_data,
-        start_sync_for_state, stop_sync_for_state,
+        enqueue_outbox_message_for_state, force_sync_for_state, get_message_for_state,
+        get_sync_status_detail_for_state, get_sync_status_for_state, list_messages_for_state,
+        list_threads_for_state, mailbox_overview_for_state, search_threads_for_state,
+        seed_demo_data, start_sync_for_state, stop_sync_for_state, EnqueueOutboxMessageRequest,
     };
     use crate::{
-        domain::models::account::SyncState,
+        domain::models::{account::SyncState, outbox::OutboxStatus},
         domain::repositories::{
-            AccountRepository, FolderRepository, MessageRepository, SyncCursorRepository,
-            ThreadRepository,
+            AccountRepository, FolderRepository, MessageRepository, OutboxRepository,
+            SyncCursorRepository, ThreadRepository,
         },
         infrastructure::{
             database::{
@@ -554,12 +631,13 @@ mod tests {
                     account_repository::SqliteAccountRepository,
                     folder_repository::SqliteFolderRepository,
                     message_repository::SqliteMessageRepository,
+                    outbox_repository::SqliteOutboxRepository,
                     sync_cursor_repository::SqliteSyncCursorRepository,
                     thread_repository::SqliteThreadRepository,
                 },
                 Database,
             },
-            sync::SyncManager,
+            sync::{MailAddress, SyncManager},
         },
         AppState,
     };
@@ -571,11 +649,10 @@ mod tests {
             .unwrap()
             .as_nanos();
         let counter = NEXT_DB_ID.fetch_add(1, Ordering::Relaxed);
-        let database_path =
-            std::env::temp_dir().join(format!(
-                "open-mail-commands-{}-{unique_suffix}-{counter}.db",
-                std::process::id()
-            ));
+        let database_path = std::env::temp_dir().join(format!(
+            "open-mail-commands-{}-{unique_suffix}-{counter}.db",
+            std::process::id()
+        ));
         let db = Database::new(&database_path).unwrap();
         db.run_migrations().unwrap();
 
@@ -587,6 +664,8 @@ mod tests {
             Arc::new(SqliteThreadRepository::new(db.clone()));
         let message_repo: Arc<dyn MessageRepository> =
             Arc::new(SqliteMessageRepository::new(db.clone()));
+        let outbox_repo: Arc<dyn OutboxRepository> =
+            Arc::new(SqliteOutboxRepository::new(db.clone()));
         let sync_cursor_repo: Arc<dyn SyncCursorRepository> =
             Arc::new(SqliteSyncCursorRepository::new(db.clone()));
         let sync_manager = Arc::new(SyncManager::new(
@@ -603,8 +682,16 @@ mod tests {
             folder_repo,
             thread_repo,
             message_repo,
+            outbox_repo,
             sync_cursor_repo,
             sync_manager,
+        }
+    }
+
+    fn mail_address(email: &str) -> MailAddress {
+        MailAddress {
+            name: None,
+            email: email.into(),
         }
     }
 
@@ -651,7 +738,10 @@ mod tests {
 
         let thread_messages = list_messages_for_state(&state, "thr_1").await.unwrap();
         let message_id = thread_messages[0].id.clone();
-        let message = get_message_for_state(&state, &message_id).await.unwrap().unwrap();
+        let message = get_message_for_state(&state, &message_id)
+            .await
+            .unwrap()
+            .unwrap();
 
         assert_eq!(thread_messages.len(), 1);
         assert_eq!(message.id, "msg_1");
@@ -710,5 +800,47 @@ mod tests {
         assert_eq!(status.folders.len(), 2);
         assert!(status.last_sync_started_at.is_some());
         assert!(status.last_sync_finished_at.is_some());
+    }
+
+    #[tokio::test]
+    async fn enqueue_outbox_message_command_persists_queued_mime() {
+        let state = build_test_state();
+        seed_demo_data(&state).await.unwrap();
+
+        let queued = enqueue_outbox_message_for_state(
+            &state,
+            EnqueueOutboxMessageRequest {
+                account_id: "acc_demo".into(),
+                from: mail_address("leco@example.com"),
+                to: vec![mail_address("team@example.com")],
+                cc: vec![],
+                bcc: vec![],
+                reply_to: None,
+                subject: "Desktop alpha".into(),
+                html_body: "<p>Ready</p>".into(),
+                plain_body: Some("Ready".into()),
+                in_reply_to: None,
+                references: vec![],
+                attachments: vec![],
+            },
+        )
+        .await
+        .unwrap();
+
+        let persisted = state
+            .outbox_repo
+            .find_by_id(&queued.id)
+            .await
+            .unwrap()
+            .unwrap();
+        let queued_messages = state
+            .outbox_repo
+            .find_by_status("acc_demo", OutboxStatus::Queued)
+            .await
+            .unwrap();
+
+        assert_eq!(persisted.status, OutboxStatus::Queued);
+        assert_eq!(persisted.mime_message.to[0].email, "team@example.com");
+        assert_eq!(queued_messages.len(), 1);
     }
 }

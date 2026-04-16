@@ -1,5 +1,12 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { MailboxOverview, MessageRecord, SyncStatusDetail, ThreadSummary } from '@lib/contracts';
+import type {
+  EnqueueOutboxMessageRequest,
+  MailboxOverview,
+  MessageRecord,
+  OutboxMessage,
+  SyncStatusDetail,
+  ThreadSummary
+} from '@lib/contracts';
 
 const isTauriRuntimeAvailable = () =>
   typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
@@ -28,6 +35,10 @@ export const api = {
       invokeOrThrow<MessageRecord[]>('list_messages', { threadId }),
     get: (messageId: string) =>
       invokeOrThrow<MessageRecord | null>('get_message', { messageId })
+  },
+  outbox: {
+    enqueue: (request: EnqueueOutboxMessageRequest) =>
+      invokeOrThrow<OutboxMessage>('enqueue_outbox_message', { request })
   }
 };
 
