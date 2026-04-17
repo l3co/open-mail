@@ -1,9 +1,10 @@
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
-import { GripVertical, Paperclip, Reply } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
 import { MailSidebar } from '@components/layout/MailSidebar';
 import { MailStatusBar } from '@components/layout/MailStatusBar';
 import { MailTopbar } from '@components/layout/MailTopbar';
-import { StatusBadge } from '@components/ui/StatusBadge';
+import { MessageReaderPanel } from '@components/layout/MessageReaderPanel';
+import { ThreadListPanel } from '@components/layout/ThreadListPanel';
 import { useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
 import type { FolderRecord, MessageRecord, SyncStatusDetail, ThreadSummary } from '@lib/contracts';
 import { useUIStore } from '@stores/useUIStore';
@@ -31,35 +32,6 @@ type ShellFrameProps = {
   onSendDraft: (draft: { to: string; subject: string; body: string }) => Promise<void>;
   onFlushOutbox: () => Promise<void>;
 };
-
-const formatThreadTime = (value: string) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'Agora';
-  }
-
-  return new Intl.DateTimeFormat('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(date);
-};
-
-const formatMessageDate = (value: string) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'Agora';
-  }
-
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(date);
-};
-
-const getPrimaryAuthor = (message: MessageRecord) =>
-  message.from[0]?.name ?? message.from[0]?.email ?? 'Open Mail';
 
 export const ShellFrame = ({
   backendStatus,
@@ -98,9 +70,6 @@ export const ShellFrame = ({
   const cycleTheme = useUIStore((state) => state.cycleTheme);
   const setThreadPanelWidth = useUIStore((state) => state.setThreadPanelWidth);
   const activeFolder = folders.find((folder) => folder.id === activeFolderId) ?? null;
-  const selectedMessageParticipants = selectedMessage?.to.map((contact) => contact.email).join(', ') ?? '';
-  const threadPanelTitle = isSearchActive ? `Search results for "${searchQuery.trim()}"` : activeFolder?.name ?? 'Message stream';
-  const threadPanelCountLabel = isSearchActive ? `${threads.length} matches` : `${threads.length} threads`;
   const syncPhaseLabel = syncStatusDetail?.phase ? syncStatusDetail.phase.replaceAll('-', ' ') : 'sync idle';
   const syncFoldersLabel = syncStatusDetail ? `${syncStatusDetail.foldersSynced} folders` : '0 folders';
   const syncMessagesLabel = syncStatusDetail
@@ -247,47 +216,14 @@ export const ShellFrame = ({
           ref={workspaceRef}
           style={workspaceStyle}
         >
-          <div className="thread-panel">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">Prototype inbox</p>
-                <h3>{threadPanelTitle}</h3>
-              </div>
-              <StatusBadge label={threadPanelCountLabel} tone="neutral" />
-            </div>
-
-            {!threads.length ? (
-              <div className="thread-empty-state">
-                <p className="thread-empty-title">
-                  {isSearchActive ? 'No results found' : `${activeFolder?.name ?? 'Folder'} is clear`}
-                </p>
-                <p className="thread-empty-copy">
-                  {isSearchActive
-                    ? 'Tente outro termo para localizar conversas por assunto, snippet ou participante.'
-                    : 'Nenhuma thread encontrada nesta pasta no momento. Quando houver atividade, ela aparece aqui.'}
-                </p>
-              </div>
-            ) : null}
-
-            <div className="thread-list">
-              {threads.map((thread) => (
-                <button
-                  className={thread.id === selectedThreadId ? 'thread-card thread-card-active' : 'thread-card'}
-                  key={thread.id}
-                  onClick={() => onSelectThread(thread.id)}
-                  type="button"
-                >
-                  <div className="thread-card-row">
-                    <h4>{thread.participants[0] ?? 'Open Mail'}</h4>
-                    <span>{formatThreadTime(thread.lastMessageAt)}</span>
-                  </div>
-                  <p className="thread-subject">{thread.subject}</p>
-                  <p className="thread-preview">{thread.snippet}</p>
-                  {thread.isUnread ? <span className="thread-dot" aria-label="Unread thread" /> : null}
-                </button>
-              ))}
-            </div>
-          </div>
+          <ThreadListPanel
+            activeFolderName={activeFolder?.name ?? null}
+            isSearchActive={isSearchActive}
+            searchQuery={searchQuery}
+            selectedThreadId={selectedThreadId}
+            threads={threads}
+            onSelectThread={onSelectThread}
+          />
 
           <button
             aria-label="Resize thread and reader panels"
@@ -303,102 +239,14 @@ export const ShellFrame = ({
             <GripVertical size={16} />
           </button>
 
-          <aside className="insight-panel reader-panel">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">Thread reader</p>
-                <h3>{selectedThread?.subject ?? 'Select a conversation'}</h3>
-              </div>
-              {selectedThread ? <StatusBadge label={`${messages.length} messages`} tone="neutral" /> : null}
-            </div>
-
-            {isMessagesLoading ? (
-              <p className="reader-empty">Carregando a thread selecionada...</p>
-            ) : null}
-
-            {!isMessagesLoading && !selectedThread ? (
-              <p className="reader-empty">Selecione uma thread para ver o histórico completo da conversa.</p>
-            ) : null}
-
-            {!isMessagesLoading && selectedThread ? (
-              <div className="message-stack">
-                {messages.map((message) => (
-                  <button
-                    className={
-                      message.id === selectedMessageId ? 'message-card message-card-active' : 'message-card'
-                    }
-                    key={message.id}
-                    onClick={() => onSelectMessage(message.id)}
-                    type="button"
-                  >
-                    <div className="message-meta">
-                      <div>
-                        <p className="message-author">{getPrimaryAuthor(message)}</p>
-                        <p className="message-address">{message.from[0]?.email ?? 'unknown@openmail.dev'}</p>
-                      </div>
-
-                      <div className="message-actions">
-                        <span>{formatMessageDate(message.date)}</span>
-                        <span aria-label="Reply to message" className="message-action" role="presentation">
-                          <Reply size={14} />
-                        </span>
-                      </div>
-                    </div>
-
-                    <p className="message-snippet">{message.plain_text ?? message.snippet}</p>
-
-                    {message.attachments.length ? (
-                      <div className="attachment-strip">
-                        {message.attachments.map((attachment) => (
-                          <span className="attachment-chip" key={attachment.id}>
-                            <Paperclip size={12} />
-                            {attachment.filename}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                  </button>
-                ))}
-
-                {selectedMessage ? (
-                  <section className="message-detail-card">
-                    <div className="message-detail-row">
-                      <span className="message-detail-label">Subject</span>
-                      <strong>{selectedMessage.subject}</strong>
-                    </div>
-
-                    <div className="message-detail-row">
-                      <span className="message-detail-label">From</span>
-                      <span>{selectedMessage.from[0]?.email ?? 'unknown@openmail.dev'}</span>
-                    </div>
-
-                    {selectedMessageParticipants ? (
-                      <div className="message-detail-row">
-                        <span className="message-detail-label">To</span>
-                        <span>{selectedMessageParticipants}</span>
-                      </div>
-                    ) : null}
-
-                    <div className="message-detail-row">
-                      <span className="message-detail-label">Message-ID</span>
-                      <span>{selectedMessage.message_id_header}</span>
-                    </div>
-
-                    {Object.keys(selectedMessage.headers).length ? (
-                      <div className="message-header-grid">
-                        {Object.entries(selectedMessage.headers).map(([key, value]) => (
-                          <div className="message-header-chip" key={key}>
-                            <span>{key}</span>
-                            <strong>{value}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </section>
-                ) : null}
-              </div>
-            ) : null}
-          </aside>
+          <MessageReaderPanel
+            isMessagesLoading={isMessagesLoading}
+            messages={messages}
+            selectedMessage={selectedMessage}
+            selectedMessageId={selectedMessageId}
+            selectedThread={selectedThread}
+            onSelectMessage={onSelectMessage}
+          />
         </section>
 
         <MailStatusBar
