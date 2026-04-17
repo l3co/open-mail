@@ -128,6 +128,10 @@ export const ShellFrame = ({
   const syncMessagesLabel = syncStatusDetail
     ? `${syncStatusDetail.messagesObserved} observed, ${syncStatusDetail.messagesDeleted} removed`
     : '0 observed';
+  const totalUnreadCount = folders.reduce((total, folder) => total + folder.unread_count, 0);
+  const syncStatusLabel = syncStatusDetail?.phase
+    ? `Sync ${syncStatusDetail.phase.replaceAll('-', ' ')}`
+    : backendStatus;
   const selectedThreadIndex = threads.findIndex((thread) => thread.id === selectedThreadId);
   const submitDraft = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -540,6 +544,13 @@ export const ShellFrame = ({
             ) : null}
           </aside>
         </section>
+
+        <footer className="status-bar" aria-label="Mailbox status">
+          <span>{totalUnreadCount} unread</span>
+          <span>{activeFolder?.name ?? 'No folder selected'}</span>
+          <span>{layoutMode === 'split' ? 'Split layout' : 'List layout'}</span>
+          <span>{syncStatusLabel}</span>
+        </footer>
       </main>
     </div>
   );

@@ -744,6 +744,24 @@ textarea {
   letter-spacing: 0.08em;
 }
 
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.status-bar span {
+  min-width: max-content;
+}
+
 .status-row {
   display: flex;
   gap: 10px;
@@ -1176,5 +1194,11 @@ textarea {
   .topbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .status-bar {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 12px 14px;
   }
 }
