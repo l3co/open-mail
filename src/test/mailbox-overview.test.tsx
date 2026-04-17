@@ -31,9 +31,11 @@ describe('mailbox overview integration', () => {
     expect(await screen.findByRole('heading', { name: 'Ship notes for desktop alpha' })).toBeInTheDocument();
     expect(await screen.findByText('release@example.com')).toBeInTheDocument();
     expect(await screen.findByText('desktop-alpha')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/sent');
 
     fireEvent.click(await screen.findByRole('button', { name: /archive/i }));
     expect(await screen.findByText('Archive is clear')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/archive');
   });
 
   it('filters threads through the shell search input', async () => {
@@ -111,6 +113,18 @@ describe('mailbox overview integration', () => {
 
     expect(await screen.findByRole('heading', { name: 'Ship notes for desktop alpha' })).toBeInTheDocument();
     expect(await screen.findByLabelText('Mailbox status')).toHaveTextContent('Sent');
+  });
+
+  it('pushes selected threads into the browser route', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(await screen.findByText('Rust health-check online'));
+
+    expect(window.location.pathname).toBe('/inbox/thr_2');
   });
 
   it('persists phase 3 layout mode through the toolbar toggle', async () => {

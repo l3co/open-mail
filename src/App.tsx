@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router';
 import { ComponentGallery } from '@components/dev/ComponentGallery';
 import { ShellFrame } from '@components/layout/ShellFrame';
 import { useFolderThreads } from '@hooks/useFolderThreads';
@@ -62,6 +62,7 @@ const useApplySelectedTheme = () => {
 
 const MailShell = () => {
   const { folderId, threadId } = useParams<{ folderId?: string; threadId?: string }>();
+  const navigate = useNavigate();
   useDomainEvents();
   const { data, isLoading, isError } = useBackendHealth();
   const mailboxQuery = useMailboxOverview();
@@ -213,6 +214,19 @@ const MailShell = () => {
     const report = await flushOutboxMutation.mutateAsync();
     setOutboxStatus(`Sent ${report.sent}/${report.attempted}; failed ${report.failed}`);
   };
+  const getFolderRouteSegment = (folderIdToRoute: string) => {
+    const folder = mailbox?.folders.find((candidate) => candidate.id === folderIdToRoute);
+    return folder?.role ?? folder?.id ?? folderIdToRoute;
+  };
+  const handleSelectFolder = (nextFolderId: string) => {
+    setSelectedFolderId(nextFolderId);
+    navigate(`/${getFolderRouteSegment(nextFolderId)}`);
+  };
+  const handleSelectThread = (nextThreadId: string) => {
+    setSelectedThreadId(nextThreadId);
+    const folderSegment = selectedFolderId ? getFolderRouteSegment(selectedFolderId) : 'inbox';
+    navigate(`/${folderSegment}/${nextThreadId}`);
+  };
 
   return (
     <ShellFrame
@@ -239,9 +253,9 @@ const MailShell = () => {
         messageDetailQuery.isLoading ||
         syncStatusDetailQuery.isLoading
       }
-      onSelectFolder={setSelectedFolderId}
+      onSelectFolder={handleSelectFolder}
       onSearchQueryChange={setSearchQuery}
-      onSelectThread={setSelectedThreadId}
+      onSelectThread={handleSelectThread}
       onSelectMessage={setSelectedMessageId}
       onSendDraft={handleSendDraft}
       onFlushOutbox={handleFlushOutbox}
