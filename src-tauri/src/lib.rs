@@ -25,7 +25,7 @@ use infrastructure::{
         },
         Database,
     },
-    sync::{SyncEventEmitter, SyncManager},
+    sync::{CredentialStore, InMemoryCredentialStore, SyncEventEmitter, SyncManager},
 };
 use tauri::Emitter;
 
@@ -36,6 +36,7 @@ pub struct AppState {
     pub thread_repo: Arc<dyn ThreadRepository>,
     pub message_repo: Arc<dyn MessageRepository>,
     pub outbox_repo: Arc<dyn OutboxRepository>,
+    pub credential_store: Arc<dyn CredentialStore>,
     pub sync_cursor_repo: Arc<dyn SyncCursorRepository>,
     pub sync_manager: Arc<SyncManager>,
 }
@@ -104,6 +105,7 @@ fn build_app_state() -> Result<AppState, String> {
     let message_repo: Arc<dyn MessageRepository> =
         Arc::new(SqliteMessageRepository::new(db.clone()));
     let outbox_repo: Arc<dyn OutboxRepository> = Arc::new(SqliteOutboxRepository::new(db.clone()));
+    let credential_store: Arc<dyn CredentialStore> = Arc::new(InMemoryCredentialStore::default());
     let sync_cursor_repo: Arc<dyn SyncCursorRepository> =
         Arc::new(SqliteSyncCursorRepository::new(db.clone()));
     let sync_manager = Arc::new(SyncManager::new(
@@ -121,6 +123,7 @@ fn build_app_state() -> Result<AppState, String> {
         thread_repo,
         message_repo,
         outbox_repo,
+        credential_store,
         sync_cursor_repo,
         sync_manager,
     })

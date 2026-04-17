@@ -1,3 +1,4 @@
+pub mod credential_store;
 pub mod imap_client;
 pub mod message_parser;
 pub mod outbox_sender;
@@ -6,6 +7,9 @@ pub mod sync_manager;
 pub mod threading;
 pub mod types;
 
+pub use credential_store::{
+    fallback_credentials_for_email, CredentialStore, InMemoryCredentialStore,
+};
 pub use imap_client::{
     FakeImapClientFactory, IdleResult, ImapClient, ImapClientFactory, ImapEnvelope, ImapFolder,
     ImapFolderStatus,

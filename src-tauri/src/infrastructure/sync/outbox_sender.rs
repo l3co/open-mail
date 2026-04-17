@@ -6,7 +6,9 @@ use crate::{
         models::outbox::{OutboxMessage, OutboxStatus},
         repositories::{AccountRepository, OutboxRepository},
     },
-    infrastructure::sync::{Credentials, SmtpClient, SyncError},
+    infrastructure::sync::{
+        fallback_credentials_for_email, CredentialStore, SmtpClient, SyncError,
+    },
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -21,6 +23,7 @@ pub struct OutboxSendReport {
 pub async fn drain_outbox_for_account(
     account_repo: &dyn AccountRepository,
     outbox_repo: &dyn OutboxRepository,
+    credential_store: &dyn CredentialStore,
     smtp_client: &mut dyn SmtpClient,
     account_id: &str,
 ) -> Result<OutboxSendReport, SyncError> {
@@ -33,12 +36,9 @@ pub async fn drain_outbox_for_account(
         .find_by_status(account_id, OutboxStatus::Queued)
         .await
         .map_err(|error| SyncError::Operation(error.to_string()))?;
-    let credentials = Credentials::Password {
-        username: account.email_address.clone(),
-        // Placeholder until the credential vault lands. FakeSmtpClient still validates
-        // the path without requiring real secrets in local development.
-        password: "local-outbox-token".into(),
-    };
+    let credentials = credential_store
+        .get(account_id)?
+        .unwrap_or_else(|| fallback_credentials_for_email(&account.email_address));
     let mut report = OutboxSendReport {
         account_id: account_id.into(),
         attempted: 0,
@@ -140,7 +140,7 @@ mod tests {
                 },
                 Database,
             },
-            sync::{FakeSmtpClient, MailAddress, MimeMessage},
+            sync::{FakeSmtpClient, InMemoryCredentialStore, MailAddress, MimeMessage},
         },
     };
 
@@ -235,6 +235,7 @@ mod tests {
         let report = drain_outbox_for_account(
             account_repo.as_ref(),
             outbox_repo.as_ref(),
+            &InMemoryCredentialStore::default(),
             &mut smtp_client,
             "acc_1",
         )
@@ -263,6 +264,7 @@ mod tests {
         let report = drain_outbox_for_account(
             account_repo.as_ref(),
             outbox_repo.as_ref(),
+            &InMemoryCredentialStore::default(),
             &mut smtp_client,
             "acc_1",
         )

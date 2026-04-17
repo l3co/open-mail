@@ -200,6 +200,7 @@ async fn flush_outbox_for_state(
     drain_outbox_for_account(
         state.account_repo.as_ref(),
         state.outbox_repo.as_ref(),
+        state.credential_store.as_ref(),
         &mut smtp_client,
         account_id,
     )
@@ -708,6 +709,9 @@ mod tests {
             thread_repo,
             message_repo,
             outbox_repo,
+            credential_store: Arc::new(
+                crate::infrastructure::sync::InMemoryCredentialStore::default(),
+            ),
             sync_cursor_repo,
             sync_manager,
         }
