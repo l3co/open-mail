@@ -1,12 +1,15 @@
-import { type FormEvent, useState } from 'react';
+import { type CSSProperties, type FormEvent, useEffect, useRef, useState } from 'react';
 import {
   BellDot,
   Command,
+  GripVertical,
   PencilLine,
   Search,
   Sparkles,
   Archive,
   Inbox,
+  PanelLeftClose,
+  PanelLeftOpen,
   Send,
   Star,
   Trash2,
@@ -77,6 +80,30 @@ const formatMessageDate = (value: string) => {
 const getPrimaryAuthor = (message: MessageRecord) =>
   message.from[0]?.name ?? message.from[0]?.email ?? 'Open Mail';
 
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'open-mail.sidebar-collapsed';
+const THREAD_PANEL_WIDTH_STORAGE_KEY = 'open-mail.thread-panel-width';
+
+const readStoredSidebarState = () => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
+};
+
+const readStoredThreadPanelWidth = () => {
+  if (typeof window === 'undefined') {
+    return 58;
+  }
+
+  const parsedWidth = Number(window.localStorage.getItem(THREAD_PANEL_WIDTH_STORAGE_KEY));
+  if (Number.isNaN(parsedWidth)) {
+    return 58;
+  }
+
+  return Math.min(72, Math.max(38, parsedWidth));
+};
+
 export const ShellFrame = ({
   backendStatus,
   folders,
@@ -100,7 +127,11 @@ export const ShellFrame = ({
   onSendDraft,
   onFlushOutbox
 }: ShellFrameProps) => {
+  const workspaceRef = useRef<HTMLElement>(null);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(readStoredSidebarState);
+  const [threadPanelWidth, setThreadPanelWidth] = useState(readStoredThreadPanelWidth);
+  const [isResizingThreadPanel, setIsResizingThreadPanel] = useState(false);
   const [draftTo, setDraftTo] = useState('team@example.com');
   const [draftSubject, setDraftSubject] = useState('Desktop alpha update');
   const [draftBody, setDraftBody] = useState('Open Mail phase 2 is ready for the next review.');
@@ -122,31 +153,85 @@ export const ShellFrame = ({
     });
     setIsComposerOpen(false);
   };
+  const workspaceStyle = {
+    '--thread-panel-width': `${threadPanelWidth}%`
+  } as CSSProperties;
+
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
+
+  useEffect(() => {
+    window.localStorage.setItem(THREAD_PANEL_WIDTH_STORAGE_KEY, String(threadPanelWidth));
+  }, [threadPanelWidth]);
+
+  useEffect(() => {
+    if (!isResizingThreadPanel) {
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const bounds = workspaceRef.current?.getBoundingClientRect();
+      if (!bounds) {
+        return;
+      }
+
+      const nextWidth = ((event.clientX - bounds.left) / bounds.width) * 100;
+      setThreadPanelWidth(Math.min(72, Math.max(38, nextWidth)));
+    };
+    const stopResize = () => setIsResizingThreadPanel(false);
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopResize, { once: true });
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopResize);
+    };
+  }, [isResizingThreadPanel]);
 
   return (
-    <div className="shell-root">
+    <div className={isSidebarCollapsed ? 'shell-root shell-root-sidebar-collapsed' : 'shell-root'}>
       <div className="shell-backdrop" aria-hidden="true" />
       <aside className="sidebar-panel">
-        <div className="brand-lockup">
-          <div className="brand-mark">
-            <Sparkles size={18} />
+        <div className="sidebar-header">
+          <div className="brand-lockup">
+            <div className="brand-mark">
+              <Sparkles size={18} />
+            </div>
+            {!isSidebarCollapsed ? (
+              <div>
+                <p className="eyebrow">Tauri v2 + React</p>
+                <h1>Open Mail</h1>
+              </div>
+            ) : null}
           </div>
-          <div>
-            <p className="eyebrow">Tauri v2 + React</p>
-            <h1>Open Mail</h1>
-          </div>
+
+          <button
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-pressed={isSidebarCollapsed}
+            className="sidebar-toggle"
+            onClick={() => {
+              setIsSidebarCollapsed((current) => !current);
+              setIsComposerOpen(false);
+            }}
+            type="button"
+          >
+            {isSidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
         </div>
 
         <button
+          aria-label={isComposerOpen ? 'Close composer' : 'New message'}
           className="compose-button"
           onClick={() => setIsComposerOpen((current) => !current)}
           type="button"
         >
           <PencilLine size={16} />
-          {isComposerOpen ? 'Close composer' : 'New message'}
+          {!isSidebarCollapsed ? <span>{isComposerOpen ? 'Close composer' : 'New message'}</span> : null}
         </button>
 
-        {isComposerOpen ? (
+        {isComposerOpen && !isSidebarCollapsed ? (
           <form className="composer-card" onSubmit={submitDraft}>
             <label>
               <span>To</span>
@@ -189,7 +274,7 @@ export const ShellFrame = ({
               {outboxStatus}
             </p>
           </form>
-        ) : (
+        ) : !isSidebarCollapsed ? (
           <div className="outbox-mini-card">
             <span>Outbox</span>
             <strong>{outboxStatus}</strong>
@@ -197,13 +282,17 @@ export const ShellFrame = ({
               {isOutboxBusy ? 'Sending...' : 'Flush queue'}
             </button>
           </div>
-        )}
+        ) : null}
 
-        <nav className="folder-nav" aria-label="Mailbox folders">
+        <nav
+          className={isSidebarCollapsed ? 'folder-nav folder-nav-rail' : 'folder-nav'}
+          aria-label="Mailbox folders"
+        >
           {folders.map((folder) => {
             const Icon = folder.role ? folderIconMap[folder.role as keyof typeof folderIconMap] ?? BellDot : BellDot;
             return (
               <button
+                aria-label={isSidebarCollapsed ? folder.name : undefined}
                 className={folder.id === activeFolderId ? 'folder-link folder-link-active' : 'folder-link'}
                 key={folder.id}
                 onClick={() => onSelectFolder(folder.id)}
@@ -211,18 +300,24 @@ export const ShellFrame = ({
               >
                 <span className="folder-link-main">
                   <Icon size={16} />
-                  {folder.name}
+                  {!isSidebarCollapsed ? <span className="folder-link-label">{folder.name}</span> : null}
                 </span>
-                <span className="folder-count">{folder.unread_count}</span>
+                {!isSidebarCollapsed ? (
+                  <span className="folder-count">{folder.unread_count}</span>
+                ) : folder.unread_count ? (
+                  <span className="folder-rail-dot" aria-hidden="true" />
+                ) : null}
               </button>
             );
           })}
         </nav>
 
-        <div className="sidebar-footer">
-          <StatusBadge label="Foundation" tone="accent" />
-          <p>Arquitetura inicial pronta para evoluir as próximas fases do roadmap.</p>
-        </div>
+        {!isSidebarCollapsed ? (
+          <div className="sidebar-footer">
+            <StatusBadge label="Foundation" tone="accent" />
+            <p>Arquitetura inicial pronta para evoluir as próximas fases do roadmap.</p>
+          </div>
+        ) : null}
       </aside>
 
       <main className="content-panel">
@@ -271,7 +366,11 @@ export const ShellFrame = ({
           </div>
         </section>
 
-        <section className="workspace-grid">
+        <section
+          className={isResizingThreadPanel ? 'workspace-grid workspace-grid-resizing' : 'workspace-grid'}
+          ref={workspaceRef}
+          style={workspaceStyle}
+        >
           <div className="thread-panel">
             <div className="section-heading">
               <div>
@@ -313,6 +412,20 @@ export const ShellFrame = ({
               ))}
             </div>
           </div>
+
+          <button
+            aria-label="Resize thread and reader panels"
+            aria-orientation="vertical"
+            className="panel-resizer"
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+              setIsResizingThreadPanel(true);
+            }}
+            role="separator"
+            type="button"
+          >
+            <GripVertical size={16} />
+          </button>
 
           <aside className="insight-panel reader-panel">
             <div className="section-heading">
