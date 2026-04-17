@@ -48,6 +48,30 @@ describe('mailbox overview integration', () => {
     expect(await screen.findByText('No results found')).toBeInTheDocument();
   });
 
+  it('supports phase 3 keyboard shortcuts for search, composer, and thread navigation', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    const searchInput = await screen.findByRole('textbox');
+    fireEvent.keyDown(window, { key: 'k', metaKey: true });
+    expect(searchInput).toHaveFocus();
+
+    fireEvent.keyDown(window, { key: 'n', metaKey: true });
+    expect(await screen.findByLabelText(/to/i)).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByLabelText(/to/i)).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'j' });
+    expect(await screen.findByRole('heading', { name: 'Rust health-check online' })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'k' });
+    expect(await screen.findByRole('heading', { name: 'Premium motion system approved' })).toBeInTheDocument();
+  });
+
   it('queues a composed message from the shell', async () => {
     render(
       <QueryClientProvider client={new QueryClient()}>

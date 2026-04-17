@@ -17,6 +17,7 @@ import {
   Reply
 } from 'lucide-react';
 import { StatusBadge } from '@components/ui/StatusBadge';
+import { useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
 import type { FolderRecord, MessageRecord, SyncStatusDetail, ThreadSummary } from '@lib/contracts';
 
 type ShellFrameProps = {
@@ -127,6 +128,7 @@ export const ShellFrame = ({
   onSendDraft,
   onFlushOutbox
 }: ShellFrameProps) => {
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const workspaceRef = useRef<HTMLElement>(null);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(readStoredSidebarState);
@@ -144,6 +146,7 @@ export const ShellFrame = ({
   const syncMessagesLabel = syncStatusDetail
     ? `${syncStatusDetail.messagesObserved} observed, ${syncStatusDetail.messagesDeleted} removed`
     : '0 observed';
+  const selectedThreadIndex = threads.findIndex((thread) => thread.id === selectedThreadId);
   const submitDraft = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     await onSendDraft({
@@ -153,9 +156,32 @@ export const ShellFrame = ({
     });
     setIsComposerOpen(false);
   };
+  const selectThreadByOffset = (offset: number) => {
+    if (!threads.length) {
+      return;
+    }
+
+    const currentIndex = selectedThreadIndex >= 0 ? selectedThreadIndex : 0;
+    const nextIndex = Math.min(threads.length - 1, Math.max(0, currentIndex + offset));
+    onSelectThread(threads[nextIndex].id);
+  };
   const workspaceStyle = {
     '--thread-panel-width': `${threadPanelWidth}%`
   } as CSSProperties;
+
+  useKeyboardShortcuts({
+    'mod+k': () => searchInputRef.current?.focus(),
+    'mod+n': () => {
+      setIsSidebarCollapsed(false);
+      setIsComposerOpen(true);
+    },
+    j: () => selectThreadByOffset(1),
+    k: () => selectThreadByOffset(-1),
+    escape: () => {
+      setIsComposerOpen(false);
+      searchInputRef.current?.blur();
+    }
+  });
 
   useEffect(() => {
     window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(isSidebarCollapsed));
@@ -325,6 +351,7 @@ export const ShellFrame = ({
           <label className="search-shell" aria-label="Search">
             <Search size={16} />
             <input
+              ref={searchInputRef}
               onChange={(event) => onSearchQueryChange(event.target.value)}
               placeholder="Search threads, people, commands"
               value={searchQuery}
