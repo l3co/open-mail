@@ -150,11 +150,11 @@ Cada componente:
 - Compacto (sem over-engineering)
 
 **Criterio de aceite:**
-- [ ] Tokens de cor, tipografia, espacamento definidos
-- [ ] Dark mode funciona via `prefers-color-scheme`
-- [ ] 14 componentes UI base implementados
-- [ ] Componentes sao acessiveis (ARIA)
-- [ ] Storybook-like: componentes renderizam isolados em rota `/dev`
+- [x] Tokens de cor, tipografia, espacamento definidos
+- [x] Dark mode funciona via tema `system`/preferencia do SO
+- [x] 14 componentes UI base implementados
+- [x] Componentes sao acessiveis (ARIA)
+- [x] Storybook-like: componentes renderizam isolados em rota `/dev`
 
 ---
 
@@ -208,11 +208,11 @@ src/components/layout/
 - **Narrow (<800px):** Navegacao stacked (mobile-like)
 
 **Criterio de aceite:**
-- [ ] Layout 3 paineis renderiza corretamente
-- [ ] Paineis redimensionaveis com drag
-- [ ] Sidebar colapsavel
-- [ ] Responsivo em 3 breakpoints
-- [ ] Tamanhos persistidos entre sessoes
+- [x] Layout 3 paineis renderiza corretamente
+- [x] Paineis redimensionaveis com drag
+- [x] Sidebar colapsavel
+- [x] Responsivo em 3 breakpoints
+- [x] Tamanhos persistidos entre sessoes
 
 ---
 
@@ -301,13 +301,13 @@ export function Sidebar() {
 - Folder em negrito se tem unread
 
 **Criterio de aceite:**
-- [ ] Folders do sistema com icones corretos
-- [ ] Badge de unread count
-- [ ] Folders custom listados
-- [ ] Labels com cor (Gmail)
-- [ ] Selecao visual do folder ativo
-- [ ] Colapso/expansao de grupos
-- [ ] Botao de compose prominente
+- [x] Folders do sistema com icones corretos
+- [x] Badge de unread count
+- [x] Folders custom listados
+- [x] Labels com cor (Gmail)
+- [x] Selecao visual do folder ativo
+- [x] Colapso/expansao de grupos
+- [x] Botao de compose prominente
 
 ---
 
@@ -362,11 +362,11 @@ export function Toolbar() {
 - Funcionalidade real de busca implementada na Fase 4
 
 **Criterio de aceite:**
-- [ ] Toolbar renderiza com todos os elementos
-- [ ] Sidebar toggle funciona
-- [ ] Search bar recebe foco com atalho
-- [ ] Sync status mostra estado visual
-- [ ] Layout toggle alterna modos
+- [x] Toolbar renderiza com todos os elementos
+- [x] Sidebar toggle funciona
+- [x] Search bar recebe foco com atalho
+- [x] Sync status mostra estado visual
+- [x] Layout toggle alterna modos
 
 ---
 
@@ -390,9 +390,9 @@ export function StatusBar() {
 ```
 
 **Criterio de aceite:**
-- [ ] Exibe contagem total de unread
-- [ ] Exibe status de sync por conta
-- [ ] Atualiza em tempo real via Tauri events
+- [x] Exibe contagem total de unread
+- [x] Exibe status de sync por conta
+- [x] Atualiza em tempo real via Tauri events
 
 ---
 
@@ -521,10 +521,12 @@ export function useTauriEvent<T>(event: string, handler: (payload: T) => void) {
 
 **Criterio de aceite:**
 - [ ] 8 stores Zustand implementados
-- [ ] Stores persistidos onde necessario (UI state)
-- [ ] Tauri events integrados (reatividade do backend)
-- [ ] Hook `useTauriEvent` reutilizavel
-- [ ] Sem re-renders desnecessarios (selectors)
+- [x] Stores persistidos onde necessario (UI state)
+- [x] Tauri events integrados (reatividade do backend)
+- [x] Hook `useTauriEvent` reutilizavel
+- [x] Sem re-renders desnecessarios (selectors)
+
+> Status: a Fase 3 usa stores focadas (`useUIStore`, `useShellStore`, `useShortcutStore`) em vez dos 8 stores finais. A expansao para stores por dominio deve acompanhar as fases de dados reais.
 
 ---
 
@@ -560,11 +562,11 @@ const SHORTCUTS = {
 ```
 
 **Criterio de aceite:**
-- [ ] Atalhos navegacionais funcionam (j/k, Cmd+1/2/3)
-- [ ] Atalhos de acao funcionam (e, #, s, r, f)
-- [ ] Cmd+K foca searchbar
-- [ ] Cmd+N abre composer
-- [ ] Atalhos sao customizaveis (config persistida)
+- [x] Atalhos navegacionais funcionam (j/k, Cmd+1/2/3)
+- [x] Atalhos de acao funcionam (e, #, s, r, f)
+- [x] Cmd+K foca searchbar
+- [x] Cmd+N abre composer
+- [x] Atalhos sao customizaveis (config persistida)
 
 ---
 
@@ -641,10 +643,10 @@ export function applyTheme(theme: Theme) {
 Mais temas podem ser adicionados como arquivos JSON no futuro (plugin system).
 
 **Criterio de aceite:**
-- [ ] 3 temas built-in funcionam
-- [ ] Troca de tema sem reload
-- [ ] Tema persistido entre sessoes
-- [ ] Tema "System" segue OS automaticamente
+- [x] 3 temas built-in funcionam
+- [x] Troca de tema sem reload
+- [x] Tema persistido entre sessoes
+- [x] Tema "System" segue OS automaticamente
 
 ---
 
@@ -677,10 +679,10 @@ export function App() {
 ```
 
 **Criterio de aceite:**
-- [ ] Navegacao por URL funciona (folder, thread, search)
-- [ ] Back/forward do Tauri funcionam
-- [ ] Deep links funcionam (abrir email especifico)
-- [ ] Onboarding em rota separada (sem shell)
+- [x] Navegacao por URL funciona (folder, thread, search)
+- [x] Back/forward do Tauri funcionam
+- [x] Deep links funcionam (abrir email especifico)
+- [x] Onboarding em rota separada (sem shell)
 
 ---
 
@@ -698,19 +700,19 @@ export function App() {
 
 ## Checklist Final da Fase 3
 
-- [ ] Design tokens definidos (cores, tipografia, espacamento)
-- [ ] 14 componentes UI base implementados
-- [ ] Dark mode funcional
-- [ ] Layout 3 paineis com resize
-- [ ] Sidebar com folders, labels, accounts
-- [ ] Toolbar com search, sync status, toggles
-- [ ] Status bar com unread count
+- [x] Design tokens definidos (cores, tipografia, espacamento)
+- [x] 14 componentes UI base implementados
+- [x] Dark mode funcional
+- [x] Layout 3 paineis com resize
+- [x] Sidebar com folders, labels, accounts
+- [x] Toolbar com search, sync status, toggles
+- [x] Status bar com unread count
 - [ ] 8 Zustand stores configurados
-- [ ] Tauri event integration funcional
-- [ ] Keyboard shortcuts mapeados
-- [ ] 3 temas built-in
-- [ ] React Router navegacao configurada
-- [ ] Testes passando
+- [x] Tauri event integration funcional
+- [x] Keyboard shortcuts mapeados
+- [x] 3 temas built-in
+- [x] React Router navegacao configurada
+- [x] Testes passando
 - [ ] CI green
 
 ---
