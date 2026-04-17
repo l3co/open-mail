@@ -1,12 +1,13 @@
-import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GripVertical } from 'lucide-react';
 import { MailSidebar } from '@components/layout/MailSidebar';
 import { MailStatusBar } from '@components/layout/MailStatusBar';
 import { MailTopbar } from '@components/layout/MailTopbar';
 import { MessageReaderPanel } from '@components/layout/MessageReaderPanel';
 import { ThreadListPanel } from '@components/layout/ThreadListPanel';
-import { useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
+import { type KeyboardShortcutMap, useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
 import type { FolderRecord, MessageRecord, SyncStatusDetail, ThreadSummary } from '@lib/contracts';
+import { type ShortcutAction, useShortcutStore } from '@stores/useShortcutStore';
 import { useUIStore } from '@stores/useUIStore';
 
 type ShellFrameProps = {
@@ -60,6 +61,8 @@ export const ShellFrame = ({
   const workspaceRef = useRef<HTMLElement>(null);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [isResizingThreadPanel, setIsResizingThreadPanel] = useState(false);
+  const [shortcutStatusLabel, setShortcutStatusLabel] = useState<string | null>(null);
+  const shortcutBindings = useShortcutStore((state) => state.bindings);
   const isSidebarCollapsed = useUIStore((state) => state.isSidebarCollapsed);
   const layoutMode = useUIStore((state) => state.layoutMode);
   const themeId = useUIStore((state) => state.themeId);
@@ -80,7 +83,7 @@ export const ShellFrame = ({
     ? `Sync ${syncStatusDetail.phase.replaceAll('-', ' ')}`
     : backendStatus;
   const selectedThreadIndex = threads.findIndex((thread) => thread.id === selectedThreadId);
-  const selectThreadByOffset = (offset: number) => {
+  const selectThreadByOffset = useCallback((offset: number) => {
     if (!threads.length) {
       return;
     }
@@ -88,13 +91,13 @@ export const ShellFrame = ({
     const currentIndex = selectedThreadIndex >= 0 ? selectedThreadIndex : 0;
     const nextIndex = Math.min(threads.length - 1, Math.max(0, currentIndex + offset));
     onSelectThread(threads[nextIndex].id);
-  };
-  const selectSystemFolder = (role: string) => {
+  }, [onSelectThread, selectedThreadIndex, threads]);
+  const selectSystemFolder = useCallback((role: string) => {
     const folder = folders.find((candidate) => candidate.role === role);
     if (folder) {
       onSelectFolder(folder.id);
     }
-  };
+  }, [folders, onSelectFolder]);
   const workspaceStyle = {
     '--thread-panel-width': `${threadPanelWidth}%`
   } as CSSProperties;
@@ -103,27 +106,54 @@ export const ShellFrame = ({
     toggleSidebar();
     setIsComposerOpen(false);
   };
+  const reportThreadShortcut = useCallback((label: string) => {
+    setShortcutStatusLabel(
+      selectedThread ? `${label}: ${selectedThread.subject}` : `${label}: no thread selected`
+    );
+  }, [selectedThread]);
+  const shortcutMap = useMemo(() => {
+    const actionHandlers: Partial<Record<ShortcutAction, () => void>> = {
+      'action.redo': () => setShortcutStatusLabel('Redo shortcut ready'),
+      'action.undo': () => setShortcutStatusLabel('Undo shortcut ready'),
+      'compose.new': () => {
+        setSidebarCollapsed(false);
+        setIsComposerOpen(true);
+      },
+      'compose.newWindow': () => {
+        setSidebarCollapsed(false);
+        setIsComposerOpen(true);
+      },
+      'compose.send': () => setShortcutStatusLabel('Composer send shortcut ready'),
+      'nav.drafts': () => selectSystemFolder('drafts'),
+      'nav.inbox': () => selectSystemFolder('inbox'),
+      'nav.sent': () => selectSystemFolder('sent'),
+      'preferences.open': () => setShortcutStatusLabel('Preferences shortcut ready'),
+      'search.focus': () => searchInputRef.current?.focus(),
+      'thread.archive': () => reportThreadShortcut('Archive shortcut queued'),
+      'thread.forward': () => reportThreadShortcut('Forward shortcut queued'),
+      'thread.next': () => selectThreadByOffset(1),
+      'thread.prev': () => selectThreadByOffset(-1),
+      'thread.reply': () => reportThreadShortcut('Reply shortcut queued'),
+      'thread.replyAll': () => reportThreadShortcut('Reply all shortcut queued'),
+      'thread.star': () => reportThreadShortcut('Star shortcut queued'),
+      'thread.trash': () => reportThreadShortcut('Trash shortcut queued'),
+      'ui.back': () => {
+        setIsComposerOpen(false);
+        searchInputRef.current?.blur();
+      }
+    };
 
-  useKeyboardShortcuts({
-    'mod+k': () => searchInputRef.current?.focus(),
-    'mod+n': () => {
-      setSidebarCollapsed(false);
-      setIsComposerOpen(true);
-    },
-    'mod+shift+n': () => {
-      setSidebarCollapsed(false);
-      setIsComposerOpen(true);
-    },
-    'mod+1': () => selectSystemFolder('inbox'),
-    'mod+2': () => selectSystemFolder('sent'),
-    'mod+3': () => selectSystemFolder('drafts'),
-    j: () => selectThreadByOffset(1),
-    k: () => selectThreadByOffset(-1),
-    escape: () => {
-      setIsComposerOpen(false);
-      searchInputRef.current?.blur();
-    }
-  });
+    return Object.entries(shortcutBindings).reduce<KeyboardShortcutMap>((shortcuts, [action, shortcut]) => {
+      const handler = actionHandlers[action as ShortcutAction];
+      if (handler) {
+        shortcuts[shortcut] = handler;
+      }
+
+      return shortcuts;
+    }, {});
+  }, [reportThreadShortcut, selectSystemFolder, selectThreadByOffset, setSidebarCollapsed, shortcutBindings]);
+
+  useKeyboardShortcuts(shortcutMap);
 
   useEffect(() => {
     if (!isResizingThreadPanel) {
@@ -250,6 +280,7 @@ export const ShellFrame = ({
         </section>
 
         <MailStatusBar
+          actionStatusLabel={shortcutStatusLabel}
           activeFolderName={activeFolder?.name ?? 'No folder selected'}
           layoutMode={layoutMode}
           syncStatusLabel={syncStatusLabel}

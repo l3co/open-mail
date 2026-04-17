@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from '@/App';
+import { useShortcutStore } from '@stores/useShortcutStore';
 
 describe('mailbox overview integration', () => {
   it('renders mailbox data in the shell', async () => {
@@ -78,6 +79,50 @@ describe('mailbox overview integration', () => {
 
     fireEvent.keyDown(window, { key: 'k' });
     expect(await screen.findByRole('heading', { name: 'Premium motion system approved' })).toBeInTheDocument();
+  });
+
+  it('supports phase 3 thread action shortcuts with status feedback', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Premium motion system approved' })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 's' });
+    expect(await screen.findByLabelText('Mailbox status')).toHaveTextContent(
+      'Star shortcut queued: Premium motion system approved'
+    );
+
+    fireEvent.keyDown(window, { key: '#' });
+    expect(await screen.findByLabelText('Mailbox status')).toHaveTextContent(
+      'Trash shortcut queued: Premium motion system approved'
+    );
+
+    fireEvent.keyDown(window, { key: 'r' });
+    expect(await screen.findByLabelText('Mailbox status')).toHaveTextContent(
+      'Reply shortcut queued: Premium motion system approved'
+    );
+  });
+
+  it('persists custom phase 3 shortcut bindings', async () => {
+    useShortcutStore.getState().setShortcutBinding('thread.star', 'x');
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Premium motion system approved' })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'x' });
+
+    expect(await screen.findByLabelText('Mailbox status')).toHaveTextContent(
+      'Star shortcut queued: Premium motion system approved'
+    );
+    expect(window.localStorage.getItem('open-mail-shortcuts')).toContain('"thread.star":"x"');
   });
 
   it('supports phase 3 mailbox number shortcuts', async () => {

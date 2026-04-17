@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { beforeEach } from 'vitest';
+import { defaultShortcutBindings, useShortcutStore } from '@stores/useShortcutStore';
 import { useUIStore } from '@stores/useUIStore';
 
 if (!window.matchMedia) {
@@ -26,5 +27,8 @@ beforeEach(() => {
     layoutMode: 'split',
     themeId: 'system',
     threadPanelWidth: 58
+  });
+  useShortcutStore.setState({
+    bindings: defaultShortcutBindings
   });
 });

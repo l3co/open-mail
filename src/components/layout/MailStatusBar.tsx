@@ -1,4 +1,5 @@
 type MailStatusBarProps = {
+  actionStatusLabel: string | null;
   activeFolderName: string;
   layoutMode: 'split' | 'list';
   syncStatusLabel: string;
@@ -6,6 +7,7 @@ type MailStatusBarProps = {
 };
 
 export const MailStatusBar = ({
+  actionStatusLabel,
   activeFolderName,
   layoutMode,
   syncStatusLabel,
@@ -16,5 +18,6 @@ export const MailStatusBar = ({
     <span>{activeFolderName}</span>
     <span>{layoutMode === 'split' ? 'Split layout' : 'List layout'}</span>
     <span>{syncStatusLabel}</span>
+    {actionStatusLabel ? <span>{actionStatusLabel}</span> : null}
   </footer>
 );
