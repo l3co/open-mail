@@ -4,6 +4,7 @@ pub mod message_parser;
 pub mod outbox_sender;
 pub mod smtp_client;
 pub mod sync_manager;
+pub mod task_queue;
 pub mod threading;
 pub mod types;
 
@@ -20,6 +21,7 @@ pub use smtp_client::{
     FakeSmtpClient, MailAddress, MimeAttachment, MimeMessage, SmtpClient, SmtpSendReceipt,
 };
 pub use sync_manager::{NoopSyncEventEmitter, SyncEventEmitter, SyncManager};
+pub use task_queue::{InMemoryMailTaskQueue, MailTaskQueue};
 pub use threading::{ThreadAssignment, ThreadBuilder};
 pub use types::{
     Credentials, SyncError, SyncFolderState, SyncMessageObservation, SyncPhase, SyncStatusSnapshot,

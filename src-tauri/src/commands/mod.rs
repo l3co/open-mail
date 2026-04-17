@@ -10,6 +10,7 @@ use crate::{
         thread::Thread,
     },
     domain::read_models::{MailboxOverview, ThreadSummary},
+    domain::tasks::MailTask,
     infrastructure::sync::{
         drain_outbox_for_account, FakeSmtpClient, MailAddress, MimeAttachment, MimeMessage,
         OutboxSendReport, SyncError, SyncStatusSnapshot,
@@ -208,6 +209,52 @@ async fn flush_outbox_for_state(
     .map_err(|error| error.to_string())
 }
 
+async fn mark_messages_read_for_state(
+    state: &AppState,
+    message_ids: Vec<String>,
+    is_read: bool,
+) -> Result<Vec<String>, String> {
+    let mut updated_message_ids = Vec::new();
+
+    for message_id in message_ids {
+        let Some(mut message) = state
+            .message_repo
+            .find_by_id(&message_id)
+            .await
+            .map_err(|error| error.to_string())?
+        else {
+            continue;
+        };
+
+        message.is_unread = !is_read;
+        message.updated_at = chrono::Utc::now();
+        state
+            .message_repo
+            .save(&message)
+            .await
+            .map_err(|error| error.to_string())?;
+        updated_message_ids.push(message.id);
+    }
+
+    if !updated_message_ids.is_empty() {
+        let task = if is_read {
+            MailTask::MarkAsRead {
+                message_ids: updated_message_ids.clone(),
+            }
+        } else {
+            MailTask::MarkAsUnread {
+                message_ids: updated_message_ids.clone(),
+            }
+        };
+        state
+            .task_queue
+            .enqueue(task)
+            .map_err(|error| error.to_string())?;
+    }
+
+    Ok(updated_message_ids)
+}
+
 async fn mailbox_overview_for_state(state: &AppState) -> Result<MailboxOverview, String> {
     let account = list_accounts_for_state(state)
         .await?
@@ -336,6 +383,22 @@ pub async fn flush_outbox(
     account_id: String,
 ) -> Result<OutboxSendReport, String> {
     flush_outbox_for_state(&state, &account_id).await
+}
+
+#[tauri::command]
+pub async fn mark_messages_read(
+    state: State<'_, AppState>,
+    message_ids: Vec<String>,
+) -> Result<Vec<String>, String> {
+    mark_messages_read_for_state(&state, message_ids, true).await
+}
+
+#[tauri::command]
+pub async fn mark_messages_unread(
+    state: State<'_, AppState>,
+    message_ids: Vec<String>,
+) -> Result<Vec<String>, String> {
+    mark_messages_read_for_state(&state, message_ids, false).await
 }
 
 pub async fn seed_demo_data(state: &AppState) -> Result<(), String> {
@@ -642,8 +705,8 @@ mod tests {
         enqueue_outbox_message_for_state, flush_outbox_for_state, force_sync_for_state,
         get_message_for_state, get_sync_status_detail_for_state, get_sync_status_for_state,
         list_messages_for_state, list_threads_for_state, mailbox_overview_for_state,
-        search_threads_for_state, seed_demo_data, start_sync_for_state, stop_sync_for_state,
-        EnqueueOutboxMessageRequest,
+        mark_messages_read_for_state, search_threads_for_state, seed_demo_data,
+        start_sync_for_state, stop_sync_for_state, EnqueueOutboxMessageRequest,
     };
     use crate::{
         domain::models::{account::SyncState, outbox::OutboxStatus},
@@ -663,7 +726,7 @@ mod tests {
                 },
                 Database,
             },
-            sync::{MailAddress, SyncManager},
+            sync::{InMemoryMailTaskQueue, MailAddress, SyncManager},
         },
         AppState,
     };
@@ -712,6 +775,7 @@ mod tests {
             credential_store: Arc::new(
                 crate::infrastructure::sync::InMemoryCredentialStore::default(),
             ),
+            task_queue: Arc::new(InMemoryMailTaskQueue::default()),
             sync_cursor_repo,
             sync_manager,
         }
@@ -910,5 +974,26 @@ mod tests {
         assert_eq!(report.sent, 1);
         assert_eq!(report.failed, 0);
         assert_eq!(persisted.status, OutboxStatus::Sent);
+    }
+
+    #[tokio::test]
+    async fn mark_messages_read_updates_locally_and_queues_task() {
+        let state = build_test_state();
+        seed_demo_data(&state).await.unwrap();
+        let message = list_messages_for_state(&state, "thr_1").await.unwrap()[0].clone();
+
+        let updated_ids = mark_messages_read_for_state(&state, vec![message.id.clone()], true)
+            .await
+            .unwrap();
+        let persisted = state
+            .message_repo
+            .find_by_id(&message.id)
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(updated_ids, vec![message.id]);
+        assert!(!persisted.is_unread);
+        assert_eq!(state.task_queue.pending_count().unwrap(), 1);
     }
 }

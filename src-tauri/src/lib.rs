@@ -8,7 +8,8 @@ use std::{path::PathBuf, sync::Arc};
 use commands::{
     enqueue_outbox_message, flush_outbox, force_sync, get_message, get_sync_status,
     get_sync_status_detail, health_check, list_accounts, list_folders, list_messages, list_threads,
-    mailbox_overview, search_threads, start_sync, stop_sync,
+    mailbox_overview, mark_messages_read, mark_messages_unread, search_threads, start_sync,
+    stop_sync,
 };
 use domain::events::DomainEvent;
 use domain::repositories::{
@@ -25,7 +26,10 @@ use infrastructure::{
         },
         Database,
     },
-    sync::{CredentialStore, InMemoryCredentialStore, SyncEventEmitter, SyncManager},
+    sync::{
+        CredentialStore, InMemoryCredentialStore, InMemoryMailTaskQueue, MailTaskQueue,
+        SyncEventEmitter, SyncManager,
+    },
 };
 use tauri::Emitter;
 
@@ -37,6 +41,7 @@ pub struct AppState {
     pub message_repo: Arc<dyn MessageRepository>,
     pub outbox_repo: Arc<dyn OutboxRepository>,
     pub credential_store: Arc<dyn CredentialStore>,
+    pub task_queue: Arc<dyn MailTaskQueue>,
     pub sync_cursor_repo: Arc<dyn SyncCursorRepository>,
     pub sync_manager: Arc<SyncManager>,
 }
@@ -87,7 +92,9 @@ pub fn run() {
             get_sync_status,
             get_sync_status_detail,
             enqueue_outbox_message,
-            flush_outbox
+            flush_outbox,
+            mark_messages_read,
+            mark_messages_unread
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open Mail");
@@ -106,6 +113,7 @@ fn build_app_state() -> Result<AppState, String> {
         Arc::new(SqliteMessageRepository::new(db.clone()));
     let outbox_repo: Arc<dyn OutboxRepository> = Arc::new(SqliteOutboxRepository::new(db.clone()));
     let credential_store: Arc<dyn CredentialStore> = Arc::new(InMemoryCredentialStore::default());
+    let task_queue: Arc<dyn MailTaskQueue> = Arc::new(InMemoryMailTaskQueue::default());
     let sync_cursor_repo: Arc<dyn SyncCursorRepository> =
         Arc::new(SqliteSyncCursorRepository::new(db.clone()));
     let sync_manager = Arc::new(SyncManager::new(
@@ -124,6 +132,7 @@ fn build_app_state() -> Result<AppState, String> {
         message_repo,
         outbox_repo,
         credential_store,
+        task_queue,
         sync_cursor_repo,
         sync_manager,
     })

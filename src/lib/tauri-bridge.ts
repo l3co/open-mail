@@ -35,7 +35,11 @@ export const api = {
     listByThread: (threadId: string) =>
       invokeOrThrow<MessageRecord[]>('list_messages', { threadId }),
     get: (messageId: string) =>
-      invokeOrThrow<MessageRecord | null>('get_message', { messageId })
+      invokeOrThrow<MessageRecord | null>('get_message', { messageId }),
+    markRead: (messageIds: string[]) =>
+      invokeOrThrow<string[]>('mark_messages_read', { messageIds }),
+    markUnread: (messageIds: string[]) =>
+      invokeOrThrow<string[]>('mark_messages_unread', { messageIds })
   },
   outbox: {
     enqueue: (request: EnqueueOutboxMessageRequest) =>
