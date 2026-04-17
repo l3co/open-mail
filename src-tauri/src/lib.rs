@@ -6,10 +6,10 @@ pub mod plugins;
 use std::{path::PathBuf, sync::Arc};
 
 use commands::{
-    enqueue_outbox_message, flush_outbox, force_sync, get_message, get_sync_status,
-    get_sync_status_detail, health_check, list_accounts, list_folders, list_messages, list_threads,
-    mailbox_overview, mark_messages_read, mark_messages_unread, search_threads, start_sync,
-    stop_sync,
+    build_oauth_authorization_url, enqueue_outbox_message, flush_outbox, force_sync, get_message,
+    get_sync_status, get_sync_status_detail, health_check, list_accounts, list_folders,
+    list_messages, list_threads, mailbox_overview, mark_messages_read, mark_messages_unread,
+    search_threads, start_sync, stop_sync,
 };
 use domain::events::DomainEvent;
 use domain::repositories::{
@@ -93,6 +93,7 @@ pub fn run() {
             get_sync_status_detail,
             enqueue_outbox_message,
             flush_outbox,
+            build_oauth_authorization_url,
             mark_messages_read,
             mark_messages_unread
         ])

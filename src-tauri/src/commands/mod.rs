@@ -13,7 +13,7 @@ use crate::{
     domain::tasks::MailTask,
     infrastructure::sync::{
         drain_outbox_for_account, FakeSmtpClient, MailAddress, MimeAttachment, MimeMessage,
-        OutboxSendReport, SyncError, SyncStatusSnapshot,
+        OAuthAuthorizationRequest, OAuthManager, OutboxSendReport, SyncError, SyncStatusSnapshot,
     },
     AppState,
 };
@@ -33,6 +33,16 @@ pub struct EnqueueOutboxMessageRequest {
     pub in_reply_to: Option<String>,
     pub references: Vec<String>,
     pub attachments: Vec<MimeAttachment>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BuildOAuthAuthorizationUrlRequest {
+    pub provider: AccountProvider,
+    pub client_id: String,
+    pub redirect_uri: String,
+    pub state: Option<String>,
+    pub code_challenge: String,
 }
 
 async fn list_accounts_for_state(state: &AppState) -> Result<Vec<Account>, String> {
@@ -209,6 +219,21 @@ async fn flush_outbox_for_state(
     .map_err(|error| error.to_string())
 }
 
+fn build_oauth_authorization_url_for_request(
+    request: BuildOAuthAuthorizationUrlRequest,
+) -> Result<OAuthAuthorizationRequest, String> {
+    let config =
+        OAuthManager::provider_config(request.provider, request.client_id, request.redirect_uri)
+            .map_err(|error| error.to_string())?;
+    let state = request
+        .state
+        .filter(|state| !state.trim().is_empty())
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+
+    OAuthManager::authorization_request(&config, state, Some(&request.code_challenge))
+        .map_err(|error| error.to_string())
+}
+
 async fn mark_messages_read_for_state(
     state: &AppState,
     message_ids: Vec<String>,
@@ -383,6 +408,13 @@ pub async fn flush_outbox(
     account_id: String,
 ) -> Result<OutboxSendReport, String> {
     flush_outbox_for_state(&state, &account_id).await
+}
+
+#[tauri::command]
+pub async fn build_oauth_authorization_url(
+    request: BuildOAuthAuthorizationUrlRequest,
+) -> Result<OAuthAuthorizationRequest, String> {
+    build_oauth_authorization_url_for_request(request)
 }
 
 #[tauri::command]
@@ -702,14 +734,18 @@ mod tests {
     };
 
     use super::{
-        enqueue_outbox_message_for_state, flush_outbox_for_state, force_sync_for_state,
-        get_message_for_state, get_sync_status_detail_for_state, get_sync_status_for_state,
-        list_messages_for_state, list_threads_for_state, mailbox_overview_for_state,
-        mark_messages_read_for_state, search_threads_for_state, seed_demo_data,
-        start_sync_for_state, stop_sync_for_state, EnqueueOutboxMessageRequest,
+        build_oauth_authorization_url_for_request, enqueue_outbox_message_for_state,
+        flush_outbox_for_state, force_sync_for_state, get_message_for_state,
+        get_sync_status_detail_for_state, get_sync_status_for_state, list_messages_for_state,
+        list_threads_for_state, mailbox_overview_for_state, mark_messages_read_for_state,
+        search_threads_for_state, seed_demo_data, start_sync_for_state, stop_sync_for_state,
+        BuildOAuthAuthorizationUrlRequest, EnqueueOutboxMessageRequest,
     };
     use crate::{
-        domain::models::{account::SyncState, outbox::OutboxStatus},
+        domain::models::{
+            account::{AccountProvider, SyncState},
+            outbox::OutboxStatus,
+        },
         domain::repositories::{
             AccountRepository, FolderRepository, MessageRepository, OutboxRepository,
             SyncCursorRepository, ThreadRepository,
@@ -995,5 +1031,24 @@ mod tests {
         assert_eq!(updated_ids, vec![message.id]);
         assert!(!persisted.is_unread);
         assert_eq!(state.task_queue.pending_count().unwrap(), 1);
+    }
+
+    #[test]
+    fn oauth_authorization_command_builds_provider_url() {
+        let request =
+            build_oauth_authorization_url_for_request(BuildOAuthAuthorizationUrlRequest {
+                provider: AccountProvider::Gmail,
+                client_id: "gmail-client".into(),
+                redirect_uri: "openmail://oauth/callback".into(),
+                state: Some("csrf-state".into()),
+                code_challenge: "challenge-value".into(),
+            })
+            .unwrap();
+
+        assert_eq!(request.provider, AccountProvider::Gmail);
+        assert!(request.authorization_url.contains("state=csrf-state"));
+        assert!(request
+            .authorization_url
+            .contains("code_challenge=challenge-value"));
     }
 }

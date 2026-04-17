@@ -1,8 +1,10 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
+  BuildOAuthAuthorizationUrlRequest,
   EnqueueOutboxMessageRequest,
   MailboxOverview,
   MessageRecord,
+  OAuthAuthorizationRequest,
   OutboxMessage,
   OutboxSendReport,
   SyncStatusDetail,
@@ -46,6 +48,10 @@ export const api = {
       invokeOrThrow<OutboxMessage>('enqueue_outbox_message', { request }),
     flush: (accountId: string) =>
       invokeOrThrow<OutboxSendReport>('flush_outbox', { accountId })
+  },
+  auth: {
+    buildOAuthAuthorizationUrl: (request: BuildOAuthAuthorizationUrlRequest) =>
+      invokeOrThrow<OAuthAuthorizationRequest>('build_oauth_authorization_url', { request })
   }
 };
 

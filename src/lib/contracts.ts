@@ -6,6 +6,24 @@ export type SyncState =
 
 export type SyncPhase = 'connecting' | 'discovering-folders' | 'syncing-folders' | 'idling';
 
+export type AccountProvider = 'Gmail' | 'Outlook' | 'Yahoo' | 'Imap' | 'Exchange';
+
+export type BuildOAuthAuthorizationUrlRequest = {
+  provider: AccountProvider;
+  clientId: string;
+  redirectUri: string;
+  state: string | null;
+  codeChallenge: string;
+};
+
+export type OAuthAuthorizationRequest = {
+  provider: AccountProvider;
+  authorizationUrl: string;
+  state: string;
+  scopes: string[];
+  redirectUri: string;
+};
+
 export type SyncFolderState = {
   path: string;
   displayName: string;

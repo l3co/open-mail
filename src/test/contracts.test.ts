@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type {
+  BuildOAuthAuthorizationUrlRequest,
   DomainEvent,
   EnqueueOutboxMessageRequest,
   MailboxReadModel,
+  OAuthAuthorizationRequest,
   OutboxMessage,
   OutboxSendReport,
   SyncStatusDetail
@@ -113,5 +115,26 @@ describe('contracts', () => {
     };
 
     expect(report.attempted).toBe(report.sent + report.failed);
+  });
+
+  it('supports oauth authorization requests for phase 2 onboarding', () => {
+    const request: BuildOAuthAuthorizationUrlRequest = {
+      provider: 'Gmail',
+      clientId: 'gmail-client',
+      redirectUri: 'openmail://oauth/callback',
+      state: 'csrf-state',
+      codeChallenge: 'challenge-value'
+    };
+    const authorization: OAuthAuthorizationRequest = {
+      provider: request.provider,
+      authorizationUrl:
+        'https://accounts.google.com/o/oauth2/v2/auth?state=csrf-state',
+      state: request.state ?? '',
+      scopes: ['https://mail.google.com/'],
+      redirectUri: request.redirectUri
+    };
+
+    expect(authorization.provider).toBe('Gmail');
+    expect(authorization.scopes).toContain('https://mail.google.com/');
   });
 });

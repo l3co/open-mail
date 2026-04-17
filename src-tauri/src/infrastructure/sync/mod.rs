@@ -1,6 +1,7 @@
 pub mod credential_store;
 pub mod imap_client;
 pub mod message_parser;
+pub mod oauth;
 pub mod outbox_sender;
 pub mod smtp_client;
 pub mod sync_manager;
@@ -16,6 +17,7 @@ pub use imap_client::{
     ImapFolderStatus,
 };
 pub use message_parser::{AttachmentData, MessageHeaders, MessageParser, ParsedMessage};
+pub use oauth::{OAuthAuthorizationRequest, OAuthManager, OAuthProviderConfig, OAuthTokens};
 pub use outbox_sender::{drain_outbox_for_account, OutboxSendReport};
 pub use smtp_client::{
     FakeSmtpClient, MailAddress, MimeAttachment, MimeMessage, SmtpClient, SmtpSendReceipt,
