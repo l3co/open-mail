@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router';
 import { ComponentGallery } from '@components/dev/ComponentGallery';
 import { ShellFrame } from '@components/layout/ShellFrame';
+import { OnboardingView } from '@components/onboarding/OnboardingView';
 import { useFolderThreads } from '@hooks/useFolderThreads';
 import { useBackendHealth } from '@hooks/useBackendHealth';
 import { useDomainEvents } from '@hooks/useDomainEvents';
@@ -272,6 +273,7 @@ const App = () => {
         <Route element={<MailShell />} path="/" />
         <Route element={<MailShell />} path="/search" />
         <Route element={<MailShell />} path="/compose" />
+        <Route element={<OnboardingView />} path="/onboarding/*" />
         <Route element={<MailShell />} path="/:folderId" />
         <Route element={<MailShell />} path="/:folderId/:threadId" />
         <Route element={<ComponentGallery />} path="/dev" />

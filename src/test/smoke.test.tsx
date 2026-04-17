@@ -27,4 +27,18 @@ describe('App smoke test', () => {
     expect(screen.getByLabelText('Component gallery')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cycle theme' })).toBeInTheDocument();
   });
+
+  it('renders onboarding outside the mailbox shell', () => {
+    window.history.pushState({}, '', '/onboarding/account');
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    expect(screen.getByLabelText('Open Mail onboarding')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Prepare the inbox before the mail arrives.' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Mailbox folders')).not.toBeInTheDocument();
+  });
 });
