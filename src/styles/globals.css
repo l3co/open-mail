@@ -469,6 +469,15 @@ textarea {
   user-select: none;
 }
 
+.workspace-grid-list {
+  grid-template-columns: 1fr;
+}
+
+.workspace-grid-list .panel-resizer,
+.workspace-grid-list .reader-panel {
+  display: none;
+}
+
 .thread-panel,
 .insight-panel {
   padding: 20px;
@@ -737,7 +746,26 @@ textarea {
 
 .status-row {
   display: flex;
+  gap: 10px;
   justify-content: flex-end;
+}
+
+.layout-toggle {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.layout-toggle:hover,
+.layout-toggle[aria-pressed='true'] {
+  border-color: rgba(246, 182, 111, 0.28);
+  color: var(--accent);
 }
 
 .status-badge {

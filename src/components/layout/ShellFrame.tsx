@@ -19,6 +19,7 @@ import {
 import { StatusBadge } from '@components/ui/StatusBadge';
 import { useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
 import type { FolderRecord, MessageRecord, SyncStatusDetail, ThreadSummary } from '@lib/contracts';
+import { useUIStore } from '@stores/useUIStore';
 
 type ShellFrameProps = {
   backendStatus: string;
@@ -81,30 +82,6 @@ const formatMessageDate = (value: string) => {
 const getPrimaryAuthor = (message: MessageRecord) =>
   message.from[0]?.name ?? message.from[0]?.email ?? 'Open Mail';
 
-const SIDEBAR_COLLAPSED_STORAGE_KEY = 'open-mail.sidebar-collapsed';
-const THREAD_PANEL_WIDTH_STORAGE_KEY = 'open-mail.thread-panel-width';
-
-const readStoredSidebarState = () => {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
-};
-
-const readStoredThreadPanelWidth = () => {
-  if (typeof window === 'undefined') {
-    return 58;
-  }
-
-  const parsedWidth = Number(window.localStorage.getItem(THREAD_PANEL_WIDTH_STORAGE_KEY));
-  if (Number.isNaN(parsedWidth)) {
-    return 58;
-  }
-
-  return Math.min(72, Math.max(38, parsedWidth));
-};
-
 export const ShellFrame = ({
   backendStatus,
   folders,
@@ -131,9 +108,14 @@ export const ShellFrame = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const workspaceRef = useRef<HTMLElement>(null);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(readStoredSidebarState);
-  const [threadPanelWidth, setThreadPanelWidth] = useState(readStoredThreadPanelWidth);
   const [isResizingThreadPanel, setIsResizingThreadPanel] = useState(false);
+  const isSidebarCollapsed = useUIStore((state) => state.isSidebarCollapsed);
+  const layoutMode = useUIStore((state) => state.layoutMode);
+  const threadPanelWidth = useUIStore((state) => state.threadPanelWidth);
+  const setSidebarCollapsed = useUIStore((state) => state.setSidebarCollapsed);
+  const toggleSidebar = useUIStore((state) => state.toggleSidebar);
+  const toggleLayoutMode = useUIStore((state) => state.toggleLayoutMode);
+  const setThreadPanelWidth = useUIStore((state) => state.setThreadPanelWidth);
   const [draftTo, setDraftTo] = useState('team@example.com');
   const [draftSubject, setDraftSubject] = useState('Desktop alpha update');
   const [draftBody, setDraftBody] = useState('Open Mail phase 2 is ready for the next review.');
@@ -172,7 +154,7 @@ export const ShellFrame = ({
   useKeyboardShortcuts({
     'mod+k': () => searchInputRef.current?.focus(),
     'mod+n': () => {
-      setIsSidebarCollapsed(false);
+      setSidebarCollapsed(false);
       setIsComposerOpen(true);
     },
     j: () => selectThreadByOffset(1),
@@ -182,14 +164,6 @@ export const ShellFrame = ({
       searchInputRef.current?.blur();
     }
   });
-
-  useEffect(() => {
-    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(isSidebarCollapsed));
-  }, [isSidebarCollapsed]);
-
-  useEffect(() => {
-    window.localStorage.setItem(THREAD_PANEL_WIDTH_STORAGE_KEY, String(threadPanelWidth));
-  }, [threadPanelWidth]);
 
   useEffect(() => {
     if (!isResizingThreadPanel) {
@@ -203,7 +177,7 @@ export const ShellFrame = ({
       }
 
       const nextWidth = ((event.clientX - bounds.left) / bounds.width) * 100;
-      setThreadPanelWidth(Math.min(72, Math.max(38, nextWidth)));
+      setThreadPanelWidth(nextWidth);
     };
     const stopResize = () => setIsResizingThreadPanel(false);
 
@@ -238,7 +212,7 @@ export const ShellFrame = ({
             aria-pressed={isSidebarCollapsed}
             className="sidebar-toggle"
             onClick={() => {
-              setIsSidebarCollapsed((current) => !current);
+              toggleSidebar();
               setIsComposerOpen(false);
             }}
             type="button"
@@ -363,6 +337,15 @@ export const ShellFrame = ({
           </label>
 
           <div className="status-row">
+            <button
+              aria-label={layoutMode === 'split' ? 'Switch to list layout' : 'Switch to split layout'}
+              aria-pressed={layoutMode === 'list'}
+              className="layout-toggle"
+              onClick={toggleLayoutMode}
+              type="button"
+            >
+              {layoutMode === 'split' ? 'Split' : 'List'}
+            </button>
             <StatusBadge label={backendStatus} tone="success" />
           </div>
         </header>
@@ -394,7 +377,13 @@ export const ShellFrame = ({
         </section>
 
         <section
-          className={isResizingThreadPanel ? 'workspace-grid workspace-grid-resizing' : 'workspace-grid'}
+          className={[
+            'workspace-grid',
+            layoutMode === 'list' ? 'workspace-grid-list' : '',
+            isResizingThreadPanel ? 'workspace-grid-resizing' : ''
+          ]
+            .filter(Boolean)
+            .join(' ')}
           ref={workspaceRef}
           style={workspaceStyle}
         >

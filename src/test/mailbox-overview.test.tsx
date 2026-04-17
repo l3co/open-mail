@@ -60,16 +60,33 @@ describe('mailbox overview integration', () => {
     expect(searchInput).toHaveFocus();
 
     fireEvent.keyDown(window, { key: 'n', metaKey: true });
-    expect(await screen.findByLabelText(/to/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/^to$/i)).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.queryByLabelText(/to/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^to$/i)).not.toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'j' });
     expect(await screen.findByRole('heading', { name: 'Rust health-check online' })).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'k' });
     expect(await screen.findByRole('heading', { name: 'Premium motion system approved' })).toBeInTheDocument();
+  });
+
+  it('persists phase 3 layout mode through the toolbar toggle', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    const layoutToggle = await screen.findByRole('button', { name: /switch to list layout/i });
+    fireEvent.click(layoutToggle);
+
+    expect(await screen.findByRole('button', { name: /switch to split layout/i })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(window.localStorage.getItem('open-mail-ui')).toContain('"layoutMode":"list"');
   });
 
   it('queues a composed message from the shell', async () => {
@@ -80,9 +97,9 @@ describe('mailbox overview integration', () => {
     );
 
     fireEvent.click(await screen.findByRole('button', { name: /new message/i }));
-    fireEvent.change(screen.getByLabelText(/to/i), { target: { value: 'review@example.com' } });
-    fireEvent.change(screen.getByLabelText(/subject/i), { target: { value: 'Review package' } });
-    fireEvent.change(screen.getByLabelText(/message/i), {
+    fireEvent.change(screen.getByLabelText(/^to$/i), { target: { value: 'review@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^subject$/i), { target: { value: 'Review package' } });
+    fireEvent.change(screen.getByLabelText(/^message$/i), {
       target: { value: 'This queued draft is ready for validation.' }
     });
     fireEvent.click(screen.getByRole('button', { name: /^queue$/i }));
