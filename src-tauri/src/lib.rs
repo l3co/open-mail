@@ -9,7 +9,7 @@ use commands::{
     build_oauth_authorization_url, enqueue_outbox_message, flush_outbox, force_sync, get_message,
     get_sync_status, get_sync_status_detail, health_check, list_accounts, list_folders,
     list_messages, list_threads, mailbox_overview, mark_messages_read, mark_messages_unread,
-    search_threads, start_sync, stop_sync,
+    open_external_url, search_threads, start_sync, stop_sync,
 };
 use domain::events::DomainEvent;
 use domain::repositories::{
@@ -94,6 +94,7 @@ pub fn run() {
             enqueue_outbox_message,
             flush_outbox,
             build_oauth_authorization_url,
+            open_external_url,
             mark_messages_read,
             mark_messages_unread
         ])

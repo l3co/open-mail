@@ -7,6 +7,7 @@ type MessageReaderPanelProps = {
   messages: MessageRecord[];
   selectedMessageId: string | null;
   selectedThread: ThreadSummary | null;
+  onOpenExternalLink: (url: string) => void;
   onSelectMessage: (messageId: string) => void;
 };
 
@@ -15,6 +16,7 @@ export const MessageReaderPanel = ({
   messages,
   selectedMessageId,
   selectedThread,
+  onOpenExternalLink,
   onSelectMessage
 }: MessageReaderPanelProps) => {
   return (
@@ -38,6 +40,7 @@ export const MessageReaderPanel = ({
           messages={messages}
           selectedMessageId={selectedMessageId}
           threadSubject={selectedThread.subject}
+          onOpenExternalLink={onOpenExternalLink}
           onSelectMessage={onSelectMessage}
         />
       ) : null}

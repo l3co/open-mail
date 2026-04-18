@@ -234,6 +234,38 @@ fn build_oauth_authorization_url_for_request(
         .map_err(|error| error.to_string())
 }
 
+fn validate_external_url(url: &str) -> Result<String, String> {
+    let trimmed_url = url.trim();
+    let (scheme, _) = trimmed_url
+        .split_once(':')
+        .ok_or_else(|| "external URL must include a protocol".to_string())?;
+    let normalized_scheme = scheme.to_ascii_lowercase();
+
+    match normalized_scheme.as_str() {
+        "http" | "https" | "mailto" => Ok(trimmed_url.to_string()),
+        _ => Err(format!("external URL protocol is not allowed: {scheme}")),
+    }
+}
+
+fn open_url_with_system(url: &str) -> Result<(), String> {
+    let status = if cfg!(target_os = "macos") {
+        std::process::Command::new("open").arg(url).status()
+    } else if cfg!(target_os = "windows") {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", url])
+            .status()
+    } else {
+        std::process::Command::new("xdg-open").arg(url).status()
+    }
+    .map_err(|error| error.to_string())?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("system opener exited with status: {status}"))
+    }
+}
+
 async fn mark_messages_read_for_state(
     state: &AppState,
     message_ids: Vec<String>,
@@ -415,6 +447,12 @@ pub async fn build_oauth_authorization_url(
     request: BuildOAuthAuthorizationUrlRequest,
 ) -> Result<OAuthAuthorizationRequest, String> {
     build_oauth_authorization_url_for_request(request)
+}
+
+#[tauri::command]
+pub async fn open_external_url(url: String) -> Result<(), String> {
+    let safe_url = validate_external_url(&url)?;
+    open_url_with_system(&safe_url)
 }
 
 #[tauri::command]
@@ -739,7 +777,7 @@ mod tests {
         get_sync_status_detail_for_state, get_sync_status_for_state, list_messages_for_state,
         list_threads_for_state, mailbox_overview_for_state, mark_messages_read_for_state,
         search_threads_for_state, seed_demo_data, start_sync_for_state, stop_sync_for_state,
-        BuildOAuthAuthorizationUrlRequest, EnqueueOutboxMessageRequest,
+        validate_external_url, BuildOAuthAuthorizationUrlRequest, EnqueueOutboxMessageRequest,
     };
     use crate::{
         domain::models::{
@@ -1050,5 +1088,19 @@ mod tests {
         assert!(request
             .authorization_url
             .contains("code_challenge=challenge-value"));
+    }
+
+    #[test]
+    fn external_url_validation_allows_browser_and_mail_links_only() {
+        assert_eq!(
+            validate_external_url("https://example.com/report").unwrap(),
+            "https://example.com/report"
+        );
+        assert_eq!(
+            validate_external_url("mailto:team@example.com").unwrap(),
+            "mailto:team@example.com"
+        );
+        assert!(validate_external_url("javascript:alert(1)").is_err());
+        assert!(validate_external_url("file:///etc/passwd").is_err());
     }
 }

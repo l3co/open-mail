@@ -226,6 +226,16 @@ const MailShell = () => {
     const folderSegment = selectedFolderId ? getFolderRouteSegment(selectedFolderId) : 'inbox';
     navigate(`/${folderSegment}/${nextThreadId}`);
   };
+  const handleOpenExternalLink = (url: string) => {
+    if (!tauriRuntime.isAvailable()) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    void api.system.openExternalUrl(url).catch(() => {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    });
+  };
 
   return (
     <ShellFrame
@@ -256,6 +266,7 @@ const MailShell = () => {
       onSearchQueryChange={setSearchQuery}
       onSelectThread={handleSelectThread}
       onSelectMessage={setSelectedMessageId}
+      onOpenExternalLink={handleOpenExternalLink}
       onSendDraft={handleSendDraft}
       onFlushOutbox={handleFlushOutbox}
     />

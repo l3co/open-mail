@@ -10,10 +10,17 @@ type MessageItemProps = {
   defaultExpanded: boolean;
   isSelected: boolean;
   message: MessageRecord;
+  onOpenExternalLink?: (url: string) => void;
   onSelectMessage: (messageId: string) => void;
 };
 
-export const MessageItem = ({ defaultExpanded, isSelected, message, onSelectMessage }: MessageItemProps) => {
+export const MessageItem = ({
+  defaultExpanded,
+  isSelected,
+  message,
+  onOpenExternalLink,
+  onSelectMessage
+}: MessageItemProps) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   useEffect(() => {
@@ -32,7 +39,7 @@ export const MessageItem = ({ defaultExpanded, isSelected, message, onSelectMess
   return (
     <article className={isSelected ? 'message-card message-card-active' : 'message-card'}>
       <MessageHeader isExpanded={isExpanded} message={message} onToggle={() => setIsExpanded(false)} />
-      <MessageBody html={message.body} plainText={message.plain_text} />
+      <MessageBody html={message.body} plainText={message.plain_text} onOpenExternalLink={onOpenExternalLink} />
       <MessageAttachments attachments={message.attachments} />
       {Object.keys(message.headers).length ? (
         <div className="message-header-grid">

@@ -52,6 +52,9 @@ export const api = {
   auth: {
     buildOAuthAuthorizationUrl: (request: BuildOAuthAuthorizationUrlRequest) =>
       invokeOrThrow<OAuthAuthorizationRequest>('build_oauth_authorization_url', { request })
+  },
+  system: {
+    openExternalUrl: (url: string) => invokeOrThrow<void>('open_external_url', { url })
   }
 };
 

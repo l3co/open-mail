@@ -385,15 +385,15 @@ function sanitizeEmailHtml(html: string): string {
 
 **Criterio de aceite:**
 - [x] HTML renderizado sem XSS vulnerabilities
-- [ ] Links abrem no browser externo
+- [x] Links abrem no browser externo
 - [x] Imagens remotas bloqueadas por padrao
-- [ ] Botao "Load images" funciona
+- [x] Botao "Load images" funciona
 - [ ] Inline images (CID) renderizadas
-- [ ] Tracking pixels removidos
+- [x] Tracking pixels removidos
 - [ ] Emails em plain text formatados corretamente
 - [ ] Tabelas de layout renderizadas corretamente
 
-> Status: sanitizacao conservadora inicial remove tags perigosas, handlers inline, URLs `javascript:` e imagens por padrao. Abertura externa de links, allowlist avancada de imagens e CID ficam para o proximo corte de rendering seguro.
+> Status: sanitizacao conservadora remove tags perigosas, handlers inline e URLs `javascript:`. Links HTTP/HTTPS/mailto sao interceptados para abertura externa, imagens remotas ficam bloqueadas ate "Load remote images", e pixels 1x1 sao removidos. CID, plain text avancado e tabelas de layout ficam para proximos cortes de rendering seguro.
 
 ---
 
@@ -641,6 +641,7 @@ npm install -D @types/dompurify
 - [x] Message view com expand/collapse
 - [x] HTML rendering seguro (sanitizado)
 - [x] Imagens remotas bloqueadas por padrao
+- [x] Links externos e Load remote images seguros
 - [ ] Attachments com download e preview
 - [ ] Thread actions (archive, trash, star, move, label)
 - [ ] Busca full-text + filtros estruturados

@@ -8,9 +8,16 @@ type MessageListProps = {
   selectedMessageId: string | null;
   threadSubject: string;
   onSelectMessage: (messageId: string) => void;
+  onOpenExternalLink?: (url: string) => void;
 };
 
-export const MessageList = ({ messages, selectedMessageId, threadSubject, onSelectMessage }: MessageListProps) => {
+export const MessageList = ({
+  messages,
+  selectedMessageId,
+  threadSubject,
+  onSelectMessage,
+  onOpenExternalLink
+}: MessageListProps) => {
   const chronologicalMessages = useMemo(() => sortMessagesChronologically(messages), [messages]);
   const latestMessageId = chronologicalMessages.at(-1)?.id ?? null;
   const expandedMessageId = selectedMessageId ?? latestMessageId;
@@ -29,6 +36,7 @@ export const MessageList = ({ messages, selectedMessageId, threadSubject, onSele
             isSelected={message.id === selectedMessageId}
             key={message.id}
             message={message}
+            onOpenExternalLink={onOpenExternalLink}
             onSelectMessage={onSelectMessage}
           />
         ))}

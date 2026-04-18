@@ -80,4 +80,42 @@ describe('MessageList', () => {
     expect(onSelectMessage).toHaveBeenCalledWith('msg_first');
     expect(screen.getByText('First message')).toBeInTheDocument();
   });
+
+  it('opens sanitized links externally and loads remote images on demand', () => {
+    const onOpenExternalLink = vi.fn();
+    const messages = [
+      makeMessage({
+        id: 'msg_with_links',
+        body: [
+          '<p><a href="https://example.com/report">Open report</a></p>',
+          '<img src="https://cdn.example.com/chart.png" alt="Report chart" />',
+          '<img src="https://tracker.example.com/pixel.gif" width="1" height="1" alt="tracking pixel" />'
+        ].join(''),
+        date: '2026-03-13T11:00:00Z'
+      })
+    ];
+
+    render(
+      <MessageList
+        messages={messages}
+        selectedMessageId="msg_with_links"
+        threadSubject="Thread subject"
+        onSelectMessage={vi.fn()}
+        onOpenExternalLink={onOpenExternalLink}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: 'Open report' }));
+
+    expect(onOpenExternalLink).toHaveBeenCalledWith('https://example.com/report');
+    expect(screen.queryByRole('img', { name: 'Report chart' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /load remote images/i }));
+
+    expect(screen.getByRole('img', { name: 'Report chart' })).toHaveAttribute(
+      'src',
+      'https://cdn.example.com/chart.png'
+    );
+    expect(screen.queryByRole('img', { name: 'tracking pixel' })).not.toBeInTheDocument();
+  });
 });
