@@ -199,11 +199,13 @@ interface ThreadState {
 ```
 
 **Criterio de aceite:**
-- [ ] Threads carregam ao selecionar folder
-- [ ] Paginacao funciona (50 threads por pagina)
-- [ ] Re-fetch automatico quando backend emite evento
-- [ ] Loading state enquanto busca
-- [ ] Cache de threads por folder (evitar re-fetch ao voltar)
+- [x] Threads carregam ao selecionar folder
+- [x] Paginacao funciona (50 threads por pagina)
+- [x] Re-fetch automatico quando backend emite evento
+- [x] Loading state enquanto busca
+- [x] Cache de threads por folder (evitar re-fetch ao voltar)
+
+> Status: `useThreads` e `useThreadStore` agora suportam pagina de 50 threads, cache por `accountId:folderId`, `loadMore` e refresh por `domain:event`. A shell ainda usa o hook legado ate o proximo corte de integracao.
 
 ---
 

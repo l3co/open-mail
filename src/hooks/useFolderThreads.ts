@@ -1,19 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import type { ThreadRecord, ThreadSummary } from '@lib/contracts';
+import type { ThreadRecord } from '@lib/contracts';
+import { toThreadSummary } from '@lib/thread-summary';
 import { api, tauriRuntime } from '@lib/tauri-bridge';
-
-const toThreadSummary = (threads: ThreadRecord[]): ThreadSummary[] =>
-  threads.map((thread) => ({
-    id: thread.id,
-    subject: thread.subject,
-    snippet: thread.snippet,
-    participants: thread.participant_ids,
-    isUnread: thread.is_unread,
-    isStarred: thread.is_starred,
-    hasAttachments: thread.has_attachments,
-    messageCount: thread.message_count,
-    lastMessageAt: thread.last_message_at
-  }));
 
 export const useFolderThreads = (
   accountId: string | null,

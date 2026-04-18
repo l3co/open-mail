@@ -106,7 +106,19 @@ describe('phase 3 domain stores', () => {
   afterEach(() => {
     useAccountStore.setState({ accounts: [], selectedAccountId: null });
     useFolderStore.setState({ folders: [], selectedFolderId: null });
-    useThreadStore.setState({ threadRecords: [], threadSummaries: [], selectedThreadId: null });
+    useThreadStore.setState({
+      activeFolderKey: null,
+      hasMore: false,
+      hasMoreByFolderKey: {},
+      isLoading: false,
+      offset: 0,
+      offsetByFolderKey: {},
+      threadRecords: [],
+      threads: [],
+      threadsByFolderKey: {},
+      threadSummaries: [],
+      selectedThreadId: null
+    });
     useMessageStore.setState({ messagesByThreadId: {}, selectedMessageId: null });
     useDraftStore.setState({ drafts: [], activeDraftId: null });
     useSyncStore.setState({ syncByAccountId: {}, lastEventState: { kind: 'not-started' } });
@@ -144,6 +156,26 @@ describe('phase 3 domain stores', () => {
 
     expect(useThreadStore.getState().threadSummaries[0]?.isStarred).toBe(true);
     expect(useThreadStore.getState().threadRecords[0]?.is_starred).toBe(true);
+  });
+
+  it('fetches paginated folder threads from fallback records and caches by folder', async () => {
+    const records = Array.from({ length: 75 }, (_, index) => threadRecord(`thr_${index}`));
+
+    await useThreadStore.getState().fetchThreads('acc_1', 'inbox', records);
+
+    expect(useThreadStore.getState().threads).toHaveLength(50);
+    expect(useThreadStore.getState().hasMore).toBe(true);
+    expect(useThreadStore.getState().offset).toBe(50);
+
+    await useThreadStore.getState().fetchMore('acc_1', 'inbox', records);
+
+    expect(useThreadStore.getState().threads).toHaveLength(75);
+    expect(useThreadStore.getState().hasMore).toBe(false);
+
+    useThreadStore.getState().setThreadSummaries([]);
+    await useThreadStore.getState().fetchThreads('acc_1', 'inbox', records);
+
+    expect(useThreadStore.getState().threads).toHaveLength(75);
   });
 
   it('stores messages per thread and clears them', () => {
