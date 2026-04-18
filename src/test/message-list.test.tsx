@@ -1,0 +1,83 @@
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { MessageList } from '@components/message-list/MessageList';
+import type { ContactRecord, MessageRecord } from '@lib/contracts';
+
+const contact = (id: string, email: string, name: string | null = null): ContactRecord => ({
+  id,
+  account_id: 'acc_demo',
+  name,
+  email,
+  is_me: false,
+  created_at: '2026-03-13T10:00:00Z',
+  updated_at: '2026-03-13T10:00:00Z'
+});
+
+const makeMessage = (overrides: Partial<MessageRecord>): MessageRecord => ({
+  id: overrides.id ?? 'msg_1',
+  account_id: 'acc_demo',
+  thread_id: 'thr_1',
+  from: [contact('ct_sender', 'sender@example.com', 'Sender Example')],
+  to: [contact('ct_to', 'receiver@example.com', 'Receiver Example')],
+  cc: [],
+  bcc: [],
+  reply_to: [],
+  subject: 'Thread subject',
+  snippet: 'Default snippet',
+  body: '<p>Default body</p>',
+  plain_text: 'Default body',
+  message_id_header: '<msg@openmail.dev>',
+  in_reply_to: null,
+  references: [],
+  folder_id: 'fld_inbox',
+  label_ids: [],
+  is_unread: false,
+  is_starred: false,
+  is_draft: false,
+  date: '2026-03-13T10:00:00Z',
+  attachments: [],
+  headers: {},
+  created_at: '2026-03-13T10:00:00Z',
+  updated_at: '2026-03-13T10:00:00Z',
+  ...overrides
+});
+
+describe('MessageList', () => {
+  it('renders chronological messages with the latest expanded by default', () => {
+    const onSelectMessage = vi.fn();
+    const messages = [
+      makeMessage({
+        id: 'msg_latest',
+        body: '<p>Latest message</p><script>alert("xss")</script><img src="https://tracker.example/pixel.png" onerror="alert(1)" />',
+        date: '2026-03-13T11:00:00Z',
+        snippet: 'Latest snippet'
+      }),
+      makeMessage({
+        id: 'msg_first',
+        body: '<p>First message</p>',
+        date: '2026-03-13T09:00:00Z',
+        snippet: 'First snippet'
+      })
+    ];
+
+    render(
+      <MessageList
+        messages={messages}
+        selectedMessageId="msg_latest"
+        threadSubject="Thread subject"
+        onSelectMessage={onSelectMessage}
+      />
+    );
+
+    const messageItems = screen.getAllByRole('article');
+    expect(within(messageItems[0]).getByText('First snippet')).toBeInTheDocument();
+    expect(within(messageItems[1]).getByText('Latest message')).toBeInTheDocument();
+    expect(screen.queryByText('alert("xss")')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+
+    fireEvent.click(within(messageItems[0]).getByRole('button', { name: /expand message/i }));
+
+    expect(onSelectMessage).toHaveBeenCalledWith('msg_first');
+    expect(screen.getByText('First message')).toBeInTheDocument();
+  });
+});

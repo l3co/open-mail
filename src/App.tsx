@@ -6,7 +6,6 @@ import { ShellFrame } from '@components/layout/ShellFrame';
 import { OnboardingView } from '@components/onboarding/OnboardingView';
 import { useBackendHealth } from '@hooks/useBackendHealth';
 import { useDomainEvents } from '@hooks/useDomainEvents';
-import { useMessageDetail } from '@hooks/useMessageDetail';
 import { useMailboxOverview } from '@hooks/useMailboxOverview';
 import { useSearchThreads } from '@hooks/useSearchThreads';
 import { useSyncStatusDetail } from '@hooks/useSyncStatusDetail';
@@ -106,7 +105,6 @@ const MailShell = () => {
   );
   const selectedThread = threads.find((thread) => thread.id === selectedThreadId) ?? threads[0] ?? null;
   const messagesQuery = useThreadMessages(selectedThread?.id ?? null);
-  const messageDetailQuery = useMessageDetail(selectedMessageId);
   const syncStatusDetailQuery = useSyncStatusDetail(mailbox?.accountId ?? null);
   const enqueueOutboxMutation = useMutation({
     mutationFn: async (draft: ComposeDraft): Promise<OutboxMessage> => {
@@ -243,14 +241,12 @@ const MailShell = () => {
       selectedThread={selectedThread}
       messages={messagesQuery.data ?? []}
       selectedMessageId={selectedMessageId}
-      selectedMessage={messageDetailQuery.data ?? null}
       syncStatusDetail={syncStatusDetailQuery.data ?? null}
       outboxStatus={outboxStatus}
       isOutboxBusy={enqueueOutboxMutation.isPending || flushOutboxMutation.isPending}
       isMessagesLoading={
         searchThreadsQuery.isLoading ||
         messagesQuery.isLoading ||
-        messageDetailQuery.isLoading ||
         syncStatusDetailQuery.isLoading
       }
       isThreadsLoading={folderThreadsQuery.isLoading || searchThreadsQuery.isLoading}

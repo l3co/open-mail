@@ -315,15 +315,17 @@ export function MessageItem({ message, isLast, defaultExpanded }) {
 ```
 
 **Criterio de aceite:**
-- [ ] Mensagens do thread exibidas em ordem cronologica
-- [ ] Ultima mensagem expandida por padrao, anteriores colapsadas
-- [ ] Click em mensagem colapsada expande
-- [ ] Header mostra from, to, cc com expand
-- [ ] Body renderiza HTML sanitizado
-- [ ] Quoted text colapsavel
-- [ ] Attachments listados com download
-- [ ] Acoes (reply, reply all, forward, more)
+- [x] Mensagens do thread exibidas em ordem cronologica
+- [x] Ultima mensagem expandida por padrao, anteriores colapsadas
+- [x] Click em mensagem colapsada expande
+- [x] Header mostra from, to, cc com expand
+- [x] Body renderiza HTML sanitizado
+- [x] Quoted text colapsavel
+- [x] Attachments listados com download
+- [x] Acoes (reply, reply all, forward, more)
 - [ ] Mark as read automatico ao visualizar
+
+> Status: message view inicial implementada em `src/components/message-list/` com ordem cronologica, expand/collapse, body sanitizado, quoted text colapsavel, anexos listados e acoes basicas. Mark-as-read automatico fica para um corte posterior.
 
 ---
 
@@ -382,14 +384,16 @@ function sanitizeEmailHtml(html: string): string {
 - CSS inline → permitir com restricoes (sem position: fixed, etc.)
 
 **Criterio de aceite:**
-- [ ] HTML renderizado sem XSS vulnerabilities
+- [x] HTML renderizado sem XSS vulnerabilities
 - [ ] Links abrem no browser externo
-- [ ] Imagens remotas bloqueadas por padrao
+- [x] Imagens remotas bloqueadas por padrao
 - [ ] Botao "Load images" funciona
 - [ ] Inline images (CID) renderizadas
 - [ ] Tracking pixels removidos
 - [ ] Emails em plain text formatados corretamente
 - [ ] Tabelas de layout renderizadas corretamente
+
+> Status: sanitizacao conservadora inicial remove tags perigosas, handlers inline, URLs `javascript:` e imagens por padrao. Abertura externa de links, allowlist avancada de imagens e CID ficam para o proximo corte de rendering seguro.
 
 ---
 
@@ -634,9 +638,9 @@ npm install -D @types/dompurify
 - [x] Selecao simples e multipla
 - [x] Quick actions on hover
 - [x] Context menu
-- [ ] Message view com expand/collapse
-- [ ] HTML rendering seguro (sanitizado)
-- [ ] Imagens remotas bloqueadas por padrao
+- [x] Message view com expand/collapse
+- [x] HTML rendering seguro (sanitizado)
+- [x] Imagens remotas bloqueadas por padrao
 - [ ] Attachments com download e preview
 - [ ] Thread actions (archive, trash, star, move, label)
 - [ ] Busca full-text + filtros estruturados

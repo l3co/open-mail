@@ -22,7 +22,6 @@ type ShellFrameProps = {
   selectedThread: ThreadSummary | null;
   messages: MessageRecord[];
   selectedMessageId: string | null;
-  selectedMessage: MessageRecord | null;
   syncStatusDetail: SyncStatusDetail | null;
   outboxStatus: string;
   isOutboxBusy: boolean;
@@ -49,7 +48,6 @@ export const ShellFrame = ({
   selectedThread,
   messages,
   selectedMessageId,
-  selectedMessage,
   syncStatusDetail,
   outboxStatus,
   isOutboxBusy,
@@ -281,7 +279,6 @@ export const ShellFrame = ({
           <MessageReaderPanel
             isMessagesLoading={isMessagesLoading}
             messages={messages}
-            selectedMessage={selectedMessage}
             selectedMessageId={selectedMessageId}
             selectedThread={selectedThread}
             onSelectMessage={onSelectMessage}
