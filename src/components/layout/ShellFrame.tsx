@@ -4,7 +4,7 @@ import { MailSidebar } from '@components/layout/MailSidebar';
 import { MailStatusBar } from '@components/layout/MailStatusBar';
 import { MailTopbar } from '@components/layout/MailTopbar';
 import { MessageReaderPanel } from '@components/layout/MessageReaderPanel';
-import { ThreadListPanel } from '@components/layout/ThreadListPanel';
+import { ThreadListPanel, type ThreadDialogRequest } from '@components/layout/ThreadListPanel';
 import { type KeyboardShortcutMap, useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
 import type { AttachmentRecord, FolderRecord, MessageRecord, SyncStatusDetail, ThreadSummary } from '@lib/contracts';
 import type { StoreThreadAction } from '@stores/useThreadStore';
@@ -79,6 +79,7 @@ export const ShellFrame = ({
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [isResizingThreadPanel, setIsResizingThreadPanel] = useState(false);
   const [shortcutStatusLabel, setShortcutStatusLabel] = useState<string | null>(null);
+  const [threadDialogRequest, setThreadDialogRequest] = useState<ThreadDialogRequest | null>(null);
   const shortcutBindings = useShortcutStore((state) => state.bindings);
   const isSidebarCollapsed = useUIStore((state) => state.isSidebarCollapsed);
   const layoutMode = useUIStore((state) => state.layoutMode);
@@ -137,6 +138,19 @@ export const ShellFrame = ({
     onThreadAction(action, [selectedThread.id]);
     reportThreadShortcut(label);
   }, [onThreadAction, reportThreadShortcut, selectedThread]);
+  const openSelectedThreadDialog = useCallback((action: ThreadDialogRequest['action'], label: string) => {
+    if (!selectedThread) {
+      reportThreadShortcut(label);
+      return;
+    }
+
+    setThreadDialogRequest((currentRequest) => ({
+      action,
+      requestId: (currentRequest?.requestId ?? 0) + 1,
+      threadIds: [selectedThread.id]
+    }));
+    reportThreadShortcut(label);
+  }, [reportThreadShortcut, selectedThread]);
   const shortcutMap = useMemo(() => {
     const actionHandlers: Partial<Record<ShortcutAction, () => void>> = {
       'action.redo': () => setShortcutStatusLabel('Redo shortcut ready'),
@@ -157,6 +171,8 @@ export const ShellFrame = ({
       'search.focus': () => searchInputRef.current?.focus(),
       'thread.archive': () => runSelectedThreadAction('archive', 'Archive shortcut applied'),
       'thread.forward': () => reportThreadShortcut('Forward shortcut queued'),
+      'thread.label': () => openSelectedThreadDialog('label', 'Label shortcut opened'),
+      'thread.move': () => openSelectedThreadDialog('move', 'Move shortcut opened'),
       'thread.next': () => selectThreadByOffset(1),
       'thread.prev': () => selectThreadByOffset(-1),
       'thread.reply': () => reportThreadShortcut('Reply shortcut queued'),
@@ -177,7 +193,15 @@ export const ShellFrame = ({
 
       return shortcuts;
     }, {});
-  }, [reportThreadShortcut, runSelectedThreadAction, selectSystemFolder, selectThreadByOffset, setSidebarCollapsed, shortcutBindings]);
+  }, [
+    openSelectedThreadDialog,
+    reportThreadShortcut,
+    runSelectedThreadAction,
+    selectSystemFolder,
+    selectThreadByOffset,
+    setSidebarCollapsed,
+    shortcutBindings
+  ]);
 
   useKeyboardShortcuts(shortcutMap);
 
@@ -274,6 +298,7 @@ export const ShellFrame = ({
         >
           <ThreadListPanel
             activeFolderName={activeFolder?.name ?? null}
+            dialogRequest={threadDialogRequest}
             folders={folders}
             hasMore={hasMoreThreads}
             isSearchActive={isSearchActive}

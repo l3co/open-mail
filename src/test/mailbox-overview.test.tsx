@@ -109,6 +109,23 @@ describe('mailbox overview integration', () => {
     );
   });
 
+  it('opens move and label thread dialogs from keyboard shortcuts', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Premium motion system approved' })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'v' });
+    expect(await screen.findByRole('dialog', { name: 'Move threads dialog' })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'l' });
+    expect(await screen.findByRole('dialog', { name: 'Label threads dialog' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Move threads dialog' })).not.toBeInTheDocument();
+  });
+
   it('persists custom phase 3 shortcut bindings', async () => {
     useShortcutStore.getState().setShortcutBinding('thread.star', 'x');
 

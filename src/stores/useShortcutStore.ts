@@ -14,6 +14,8 @@ export type ShortcutAction =
   | 'search.focus'
   | 'thread.archive'
   | 'thread.forward'
+  | 'thread.label'
+  | 'thread.move'
   | 'thread.next'
   | 'thread.prev'
   | 'thread.reply'
@@ -37,6 +39,8 @@ export const defaultShortcutBindings: ShortcutBindings = {
   'search.focus': 'mod+k',
   'thread.archive': 'e',
   'thread.forward': 'f',
+  'thread.label': 'l',
+  'thread.move': 'v',
   'thread.next': 'j',
   'thread.prev': 'k',
   'thread.reply': 'r',

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StatusBadge } from '@components/ui/StatusBadge';
 import { ThreadList } from '@components/thread-list/ThreadList';
 import { ThreadListFilters } from '@components/thread-list/ThreadListFilters';
@@ -11,8 +11,15 @@ export type ThreadLabelOption = {
   name: string;
 };
 
+export type ThreadDialogRequest = {
+  action: 'move' | 'label';
+  requestId: number;
+  threadIds: string[];
+};
+
 type ThreadListPanelProps = {
   activeFolderName: string | null;
+  dialogRequest?: ThreadDialogRequest | null;
   folders: FolderRecord[];
   isSearchActive: boolean;
   labels?: ThreadLabelOption[];
@@ -38,6 +45,7 @@ const toCustomLabelId = (name: string) => `custom:${name.trim().toLowerCase().re
 
 export const ThreadListPanel = ({
   activeFolderName,
+  dialogRequest,
   folders,
   hasMore = false,
   isLoading = false,
@@ -61,18 +69,25 @@ export const ThreadListPanel = ({
   const filteredThreads = useMemo(() => filterThreads(threads, activeFilter), [activeFilter, threads]);
   const title = isSearchActive ? `Search results for "${searchQuery.trim()}"` : activeFolderName ?? 'Message stream';
   const countLabel = isSearchActive ? `${filteredThreads.length} matches` : `${filteredThreads.length} threads`;
+
+  const openMoveDialog = (threadIds: string[]) => {
+    setLabelThreadIds(null);
+    setMoveThreadIds(threadIds);
+  };
+  const openLabelDialog = (threadIds: string[]) => {
+    setMoveThreadIds(null);
+    setLabelThreadIds(threadIds);
+    setCheckedLabelIds([]);
+    setCustomLabelName('');
+  };
   const handleThreadAction = (action: ThreadAction, threadIds: string[]) => {
     if (action === 'move') {
-      setLabelThreadIds(null);
-      setMoveThreadIds(threadIds);
+      openMoveDialog(threadIds);
       return;
     }
 
     if (action === 'label') {
-      setMoveThreadIds(null);
-      setLabelThreadIds(threadIds);
-      setCheckedLabelIds([]);
-      setCustomLabelName('');
+      openLabelDialog(threadIds);
       return;
     }
 
@@ -80,6 +95,20 @@ export const ThreadListPanel = ({
     onThreadAction?.(action, threadIds);
     setActionStatus(`${actionLabel} applied to ${threadIds.length} thread${threadIds.length === 1 ? '' : 's'}`);
   };
+
+  useEffect(() => {
+    if (!dialogRequest?.threadIds.length) {
+      return;
+    }
+
+    if (dialogRequest.action === 'move') {
+      openMoveDialog(dialogRequest.threadIds);
+      return;
+    }
+
+    openLabelDialog(dialogRequest.threadIds);
+  }, [dialogRequest?.action, dialogRequest?.requestId, dialogRequest?.threadIds]);
+
   const handleLabelToggle = (labelId: string) => {
     setCheckedLabelIds((currentIds) =>
       currentIds.includes(labelId) ? currentIds.filter((id) => id !== labelId) : [...currentIds, labelId]

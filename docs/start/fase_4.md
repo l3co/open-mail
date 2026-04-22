@@ -498,11 +498,11 @@ export function ThreadListToolbar() {
 - [x] Archive, trash, star, mark read/unread funcionam
 - [x] Move to folder dialog funciona
 - [x] Label dialog funciona
-- [ ] Atalhos de teclado funcionam
+- [x] Atalhos de teclado funcionam
 - [x] Optimistic update (UI atualiza antes do IMAP)
 - [ ] Undo funciona (snackbar com "Undo" button)
 
-> Status: toolbar contextual, quick actions, context menu e atalhos de archive/trash/star aplicam atualizacoes locais otimistas via `useThreadStore`. O dialog de mover threads lista os folders da conta e aplica a movimentacao otimista entre caches. O dialog de labels aplica etiquetas existentes e cria ids locais para novas etiquetas. Cobertura completa de atalhos e undo ficam para os proximos cortes.
+> Status: toolbar contextual, quick actions, context menu e atalhos de archive/trash/star aplicam atualizacoes locais otimistas via `useThreadStore`. O dialog de mover threads lista os folders da conta e aplica a movimentacao otimista entre caches. O dialog de labels aplica etiquetas existentes e cria ids locais para novas etiquetas. Atalhos `v` e `l` abrem move/label para a thread selecionada. Undo fica para o proximo corte.
 
 ---
 
@@ -653,7 +653,7 @@ npm install -D @types/dompurify
 - [ ] Thread actions (archive, trash, star, move, label)
 - [ ] Busca full-text + filtros estruturados
 - [ ] Undo/redo funcional
-- [ ] Keyboard shortcuts (j/k, e, #, s, r, f)
+- [x] Keyboard shortcuts (j/k, e, #, s, r, f, v, l)
 - [x] Mark as read ao visualizar
 - [x] Testes passando
 - [ ] CI green
