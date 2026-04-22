@@ -565,7 +565,7 @@ pub async fn search_messages(
 - [ ] Performance: busca em <500ms para 100k mensagens
 - [ ] Cmd+K abre busca
 
-> Status: `parseSearchQuery` cobre texto livre e filtros `from:`, `to:`, `subject:`, `has:attachment`, `is:unread`, `is:starred`, `after:`, `before:` e `in:`. O fallback web/demo de `useSearchThreads` usa o parser para filtrar `ThreadRecord`s e a shell exibe os resultados na `ThreadList`. O topbar sugere participantes, folders e filtros estruturados; full-text via backend e benchmark ficam para cortes posteriores.
+> Status: `parseSearchQuery` cobre texto livre e filtros `from:`, `to:`, `subject:`, `has:attachment`, `is:unread`, `is:starred`, `after:`, `before:` e `in:`. O fallback web/demo de `useSearchThreads` usa o parser para filtrar `ThreadRecord`s e a shell exibe os resultados na `ThreadList`. O comando Tauri `search_threads` aplica os mesmos filtros estruturados antes de retornar summaries, incluindo datas RFC3339 ou `YYYY-MM-DD`. O topbar sugere participantes, folders e filtros estruturados; full-text FTS5 indexado e benchmark ficam para cortes posteriores.
 
 ---
 

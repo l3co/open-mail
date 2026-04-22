@@ -37,6 +37,166 @@ pub struct EnqueueOutboxMessageRequest {
     pub attachments: Vec<MimeAttachment>,
 }
 
+#[derive(Debug, Default, PartialEq, Eq)]
+struct ParsedThreadSearch {
+    after: Option<String>,
+    before: Option<String>,
+    from: Vec<String>,
+    has_attachment: Option<bool>,
+    in_folder: Option<String>,
+    is_starred: Option<bool>,
+    is_unread: Option<bool>,
+    subject: Vec<String>,
+    terms: Vec<String>,
+    to: Vec<String>,
+}
+
+fn normalize_search_value(value: &str) -> String {
+    value.trim().to_lowercase()
+}
+
+fn contains_case_insensitive(value: &str, needle: &str) -> bool {
+    normalize_search_value(value).contains(&normalize_search_value(needle))
+}
+
+fn matches_all(values: &[String], needles: &[String]) -> bool {
+    needles.iter().all(|needle| {
+        values
+            .iter()
+            .any(|value| contains_case_insensitive(value, needle))
+    })
+}
+
+fn parse_thread_search_query(query: &str) -> ParsedThreadSearch {
+    let mut parsed = ParsedThreadSearch::default();
+
+    for token in query.split_whitespace() {
+        let Some((key, value)) = token.split_once(':') else {
+            parsed.terms.push(token.to_string());
+            continue;
+        };
+        let key = normalize_search_value(key);
+        let value = value.trim();
+
+        if value.is_empty() && key != "has" {
+            continue;
+        }
+
+        match (key.as_str(), normalize_search_value(value).as_str()) {
+            ("from", _) => parsed.from.push(value.to_string()),
+            ("to", _) => parsed.to.push(value.to_string()),
+            ("subject", _) => parsed.subject.push(value.to_string()),
+            ("has", "attachment") => parsed.has_attachment = Some(true),
+            ("is", "unread") => parsed.is_unread = Some(true),
+            ("is", "starred") => parsed.is_starred = Some(true),
+            ("after", _) => parsed.after = Some(value.to_string()),
+            ("before", _) => parsed.before = Some(value.to_string()),
+            ("in", _) => parsed.in_folder = Some(value.to_string()),
+            _ => parsed.terms.push(token.to_string()),
+        }
+    }
+
+    parsed
+}
+
+fn thread_search_seed(parsed: &ParsedThreadSearch) -> String {
+    parsed
+        .terms
+        .first()
+        .or_else(|| parsed.subject.first())
+        .cloned()
+        .unwrap_or_default()
+}
+
+fn parse_thread_search_date(
+    value: &str,
+    end_of_day: bool,
+) -> Option<chrono::DateTime<chrono::Utc>> {
+    chrono::DateTime::parse_from_rfc3339(value)
+        .map(|date| date.with_timezone(&chrono::Utc))
+        .ok()
+        .or_else(|| {
+            let date = chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d").ok()?;
+            let time = if end_of_day {
+                chrono::NaiveTime::from_hms_opt(23, 59, 59)
+            } else {
+                chrono::NaiveTime::from_hms_opt(0, 0, 0)
+            }?;
+
+            Some(chrono::NaiveDateTime::new(date, time).and_utc())
+        })
+}
+
+fn matches_thread_search(thread: &Thread, parsed: &ParsedThreadSearch) -> bool {
+    if !matches_all(&thread.participant_ids, &parsed.from) {
+        return false;
+    }
+
+    if !matches_all(&thread.participant_ids, &parsed.to) {
+        return false;
+    }
+
+    if !matches_all(std::slice::from_ref(&thread.subject), &parsed.subject) {
+        return false;
+    }
+
+    if parsed
+        .has_attachment
+        .is_some_and(|has_attachment| thread.has_attachments != has_attachment)
+    {
+        return false;
+    }
+
+    if parsed
+        .is_unread
+        .is_some_and(|is_unread| thread.is_unread != is_unread)
+    {
+        return false;
+    }
+
+    if parsed
+        .is_starred
+        .is_some_and(|is_starred| thread.is_starred != is_starred)
+    {
+        return false;
+    }
+
+    if parsed.after.as_ref().is_some_and(|after| {
+        parse_thread_search_date(after, false)
+            .map(|date| thread.last_message_at < date)
+            .unwrap_or(false)
+    }) {
+        return false;
+    }
+
+    if parsed.before.as_ref().is_some_and(|before| {
+        parse_thread_search_date(before, true)
+            .map(|date| thread.last_message_at > date)
+            .unwrap_or(false)
+    }) {
+        return false;
+    }
+
+    if parsed.in_folder.as_ref().is_some_and(|folder| {
+        !thread
+            .folder_ids
+            .iter()
+            .any(|folder_id| contains_case_insensitive(folder_id, folder))
+    }) {
+        return false;
+    }
+
+    let searchable_values = [
+        vec![thread.subject.clone(), thread.snippet.clone()],
+        thread.participant_ids.clone(),
+        thread.folder_ids.clone(),
+        thread.label_ids.clone(),
+    ]
+    .concat();
+
+    matches_all(&searchable_values, &parsed.terms)
+}
+
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BuildOAuthAuthorizationUrlRequest {
@@ -108,11 +268,20 @@ async fn search_threads_for_state(
         return Ok(Vec::new());
     }
 
+    let parsed_query = parse_thread_search_query(trimmed_query);
+    let search_seed = thread_search_seed(&parsed_query);
+
     state
         .thread_repo
-        .search(account_id, trimmed_query)
+        .search(account_id, &search_seed)
         .await
-        .map(|threads| threads.into_iter().map(ThreadSummary::from).collect())
+        .map(|threads| {
+            threads
+                .into_iter()
+                .filter(|thread| matches_thread_search(thread, &parsed_query))
+                .map(ThreadSummary::from)
+                .collect()
+        })
         .map_err(|error| error.to_string())
 }
 
@@ -925,6 +1094,39 @@ mod tests {
         assert_eq!(search_results.len(), 1);
         assert_eq!(search_results[0].id, "thr_2");
         assert!(empty_search.is_empty());
+    }
+
+    #[tokio::test]
+    async fn thread_search_supports_structured_filters() {
+        let state = build_test_state();
+        seed_demo_data(&state).await.unwrap();
+
+        let starred_from_infra =
+            search_threads_for_state(&state, "acc_demo", "from:infra subject:health is:starred")
+                .await
+                .unwrap();
+        let inbox_attachments =
+            search_threads_for_state(&state, "acc_demo", "in:inbox has:attachment")
+                .await
+                .unwrap();
+        let release_attachments =
+            search_threads_for_state(&state, "acc_demo", "from:release has:attachment")
+                .await
+                .unwrap();
+        let date_only_after = search_threads_for_state(&state, "acc_demo", "after:2026-03-13")
+            .await
+            .unwrap();
+        let date_only_before = search_threads_for_state(&state, "acc_demo", "before:2026-03-12")
+            .await
+            .unwrap();
+
+        assert_eq!(starred_from_infra.len(), 1);
+        assert_eq!(starred_from_infra[0].id, "thr_2");
+        assert_eq!(inbox_attachments.len(), 1);
+        assert_eq!(inbox_attachments[0].id, "thr_1");
+        assert!(release_attachments.is_empty());
+        assert_eq!(date_only_after.len(), 3);
+        assert!(date_only_before.is_empty());
     }
 
     #[tokio::test]
