@@ -38,8 +38,8 @@ export const MessageAttachments = ({
     <div className="message-attachments" aria-label="Message attachments">
       {attachments.map((attachment) => {
         const attachmentKind = getAttachmentKind(attachment.content_type);
-        const canPreviewImage = attachmentKind === 'Image' && Boolean(attachment.local_path);
-        const isPreviewVisible = previewAttachmentId === attachment.id && canPreviewImage;
+        const canPreview = ['Image', 'PDF'].includes(attachmentKind) && Boolean(attachment.local_path);
+        const isPreviewVisible = previewAttachmentId === attachment.id && canPreview;
         const AttachmentIcon = attachmentKind === 'Image' ? ImageIcon : attachmentKind === 'PDF' ? FileText : Paperclip;
 
         return (
@@ -51,7 +51,7 @@ export const MessageAttachments = ({
               <em>{attachmentKind}</em>
             </span>
             <div className="message-attachment-actions">
-              {canPreviewImage ? (
+              {canPreview ? (
                 <button
                   aria-label={`Preview ${attachment.filename}`}
                   onClick={() => setPreviewAttachmentId(isPreviewVisible ? null : attachment.id)}
@@ -69,11 +69,19 @@ export const MessageAttachments = ({
               </button>
             </div>
             {isPreviewVisible && attachment.local_path ? (
-              <img
-                alt={`Preview of ${attachment.filename}`}
-                className="message-attachment-preview"
-                src={resolveAttachmentUrl(attachment.local_path)}
-              />
+              attachmentKind === 'Image' ? (
+                <img
+                  alt={`Preview of ${attachment.filename}`}
+                  className="message-attachment-preview"
+                  src={resolveAttachmentUrl(attachment.local_path)}
+                />
+              ) : (
+                <iframe
+                  className="message-attachment-preview message-attachment-preview-frame"
+                  src={resolveAttachmentUrl(attachment.local_path)}
+                  title={`Preview of ${attachment.filename}`}
+                />
+              )
             ) : null}
           </div>
         );

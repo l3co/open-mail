@@ -1220,6 +1220,14 @@ summary.folder-group-title::-webkit-details-marker {
   object-fit: contain;
 }
 
+.message-attachment-preview-frame {
+  width: 100%;
+  max-width: 720px;
+  height: 420px;
+  max-height: none;
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .attachment-strip {
   display: flex;
   flex-wrap: wrap;

@@ -277,4 +277,44 @@ describe('MessageList', () => {
 
     expect(onDownloadAttachment).toHaveBeenCalledWith(expect.objectContaining({ id: 'att_receipt' }));
   });
+
+  it('previews local PDF attachments in an inline frame', () => {
+    const messages = [
+      makeMessage({
+        id: 'msg_with_pdf',
+        attachments: [
+          makeAttachment({
+            id: 'att_pdf_report',
+            message_id: 'msg_with_pdf',
+            filename: 'report.pdf',
+            content_type: 'application/pdf',
+            content_id: null,
+            is_inline: false,
+            local_path: '/tmp/open-mail/report.pdf',
+            size: 1048576
+          })
+        ]
+      })
+    ];
+
+    render(
+      <MessageList
+        messages={messages}
+        selectedMessageId="msg_with_pdf"
+        threadSubject="Thread subject"
+        onSelectMessage={vi.fn()}
+        resolveInlineImageUrl={(localPath) => `asset://${localPath}`}
+      />
+    );
+
+    expect(screen.getByText('PDF')).toBeInTheDocument();
+    expect(screen.getByText('application/pdf · 1.0 MB')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /preview report\.pdf/i }));
+
+    expect(screen.getByTitle('Preview of report.pdf')).toHaveAttribute(
+      'src',
+      'asset:///tmp/open-mail/report.pdf'
+    );
+  });
 });
