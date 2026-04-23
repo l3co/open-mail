@@ -37,12 +37,7 @@ const toSafeHtml = (value: string) =>
     .map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br />')}</p>`)
     .join('');
 
-const parseRecipients = (value: string) =>
-  value
-    .split(',')
-    .map((email) => email.trim())
-    .filter(Boolean)
-    .map((email) => ({ name: null, email }));
+const toMailAddresses = (emails: string[]) => emails.map((email) => ({ name: null, email }));
 
 const useApplySelectedTheme = () => {
   const themeId = useUIStore((state) => state.themeId);
@@ -112,6 +107,10 @@ const MailShell = () => {
     [folderThreadsQuery.threads, isSearchActive, mailbox?.threads, searchThreadsQuery.data]
   );
   const selectedThread = threads.find((thread) => thread.id === selectedThreadId) ?? threads[0] ?? null;
+  const recipientSuggestions = useMemo(
+    () => Array.from(new Set((mailbox?.allThreads ?? []).flatMap((thread) => thread.participant_ids))).sort(),
+    [mailbox?.allThreads]
+  );
   const messagesQuery = useThreadMessages(selectedThread?.id ?? null);
   const syncStatusDetailQuery = useSyncStatusDetail(mailbox?.accountId ?? null);
   const enqueueOutboxMutation = useMutation({
@@ -120,9 +119,9 @@ const MailShell = () => {
       const request: EnqueueOutboxMessageRequest = {
         accountId,
         from: { name: 'Open Mail', email: 'leco@example.com' },
-        to: parseRecipients(draft.to),
-        cc: parseRecipients(draft.cc),
-        bcc: parseRecipients(draft.bcc),
+        to: toMailAddresses(draft.to),
+        cc: toMailAddresses(draft.cc),
+        bcc: toMailAddresses(draft.bcc),
         replyTo: null,
         subject: draft.subject,
         htmlBody: toSafeHtml(draft.body),
@@ -350,6 +349,7 @@ const MailShell = () => {
       selectedMessageId={selectedMessageId}
       syncStatusDetail={syncStatusDetailQuery.data ?? null}
       outboxStatus={outboxStatus}
+      recipientSuggestions={recipientSuggestions}
       isOutboxBusy={enqueueOutboxMutation.isPending || flushOutboxMutation.isPending}
       isMessagesLoading={
         searchThreadsQuery.isLoading ||

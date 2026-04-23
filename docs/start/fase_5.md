@@ -184,6 +184,8 @@ export function ParticipantField({ label, value, onChange }: Props) {
 - [ ] Keyboard navigation (Tab, Enter, Backspace, Escape)
 - [ ] Cc/Bcc toggleaveis
 
+> Status: `ParticipantField` e `ParticipantChip` agora suportam chips, sugestoes locais a partir dos participantes conhecidos do mailbox, selecao com Enter/Tab, paste de multiplos emails, remocao com Backspace e destaque visual para destinatarios invalidos. A busca remota em contatos reais via backend ainda fica para um corte posterior.
+
 ---
 
 ### 5.3 — TipTap Editor (Rich Text)

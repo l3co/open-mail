@@ -4,17 +4,18 @@ import { ComposerFooter } from '@components/composer/ComposerFooter';
 import { ComposerHeader } from '@components/composer/ComposerHeader';
 
 type ComposerDraft = {
-  bcc: string;
+  bcc: string[];
   body: string;
-  cc: string;
+  cc: string[];
   subject: string;
-  to: string;
+  to: string[];
 };
 
 type ComposerProps = {
   from: string;
   initialDraft?: Partial<ComposerDraft>;
   isSending: boolean;
+  recipientSuggestions: string[];
   status: string;
   onClose: () => void;
   onFlushOutbox: () => Promise<void>;
@@ -22,14 +23,23 @@ type ComposerProps = {
 };
 
 const defaultDraft: ComposerDraft = {
-  bcc: '',
+  bcc: [],
   body: 'Open Mail phase 5 composer is ready for the next review.',
-  cc: '',
+  cc: [],
   subject: 'Desktop alpha update',
-  to: 'team@example.com'
+  to: ['team@example.com']
 };
 
-export const Composer = ({ from, initialDraft, isSending, status, onClose, onFlushOutbox, onSend }: ComposerProps) => {
+export const Composer = ({
+  from,
+  initialDraft,
+  isSending,
+  recipientSuggestions,
+  status,
+  onClose,
+  onFlushOutbox,
+  onSend
+}: ComposerProps) => {
   const mergedDraft = useMemo(
     () => ({
       ...defaultDraft,
@@ -38,13 +48,13 @@ export const Composer = ({ from, initialDraft, isSending, status, onClose, onFlu
     [initialDraft]
   );
   const [draft, setDraft] = useState<ComposerDraft>(mergedDraft);
-  const [isCcVisible, setIsCcVisible] = useState(Boolean(mergedDraft.cc));
-  const [isBccVisible, setIsBccVisible] = useState(Boolean(mergedDraft.bcc));
+  const [isCcVisible, setIsCcVisible] = useState(Boolean(mergedDraft.cc.length));
+  const [isBccVisible, setIsBccVisible] = useState(Boolean(mergedDraft.bcc.length));
 
   const isDirty =
-    draft.to !== mergedDraft.to ||
-    draft.cc !== mergedDraft.cc ||
-    draft.bcc !== mergedDraft.bcc ||
+    draft.to.join(',') !== mergedDraft.to.join(',') ||
+    draft.cc.join(',') !== mergedDraft.cc.join(',') ||
+    draft.bcc.join(',') !== mergedDraft.bcc.join(',') ||
     draft.subject !== mergedDraft.subject ||
     draft.body !== mergedDraft.body;
 
@@ -76,6 +86,7 @@ export const Composer = ({ from, initialDraft, isSending, status, onClose, onFlu
         isBccVisible={isBccVisible}
         isCcVisible={isCcVisible}
         isSending={isSending}
+        recipientSuggestions={recipientSuggestions}
         onBccChange={(value) => updateDraft('bcc', value)}
         onCcChange={(value) => updateDraft('cc', value)}
         onClose={handleClose}

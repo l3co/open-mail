@@ -255,6 +255,106 @@ textarea {
   text-transform: none;
 }
 
+.participant-field {
+  position: relative;
+}
+
+.participant-field-input-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(5, 12, 22, 0.56);
+}
+
+.participant-field-input-wrap:focus-within {
+  border-color: rgba(246, 182, 111, 0.42);
+  box-shadow: 0 0 0 4px rgba(246, 182, 111, 0.08);
+}
+
+.participant-field-input-wrap input {
+  flex: 1 1 180px;
+  min-width: 140px;
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.participant-field-input-wrap input:focus {
+  box-shadow: none;
+}
+
+.participant-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid rgba(132, 216, 199, 0.28);
+  border-radius: 999px;
+  background: rgba(132, 216, 199, 0.1);
+  color: var(--text);
+  font-size: 0.86rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.participant-chip-invalid {
+  border-color: rgba(255, 122, 122, 0.35);
+  background: rgba(255, 122, 122, 0.1);
+}
+
+.participant-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  cursor: pointer;
+}
+
+.participant-suggestions {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(10, 16, 26, 0.98);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+}
+
+.participant-suggestions button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.participant-suggestions button:hover,
+.participant-suggestions button:focus-visible {
+  background: rgba(246, 182, 111, 0.12);
+}
+
 .composer-field-row input {
   min-height: 42px;
   padding: 0 12px;

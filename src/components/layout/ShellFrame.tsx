@@ -27,6 +27,7 @@ type ShellFrameProps = {
   selectedMessageId: string | null;
   syncStatusDetail: SyncStatusDetail | null;
   outboxStatus: string;
+  recipientSuggestions: string[];
   isOutboxBusy: boolean;
   isMessagesLoading: boolean;
   isThreadsLoading?: boolean;
@@ -59,6 +60,7 @@ export const ShellFrame = ({
   selectedMessageId,
   syncStatusDetail,
   outboxStatus,
+  recipientSuggestions,
   isOutboxBusy,
   isMessagesLoading,
   isThreadsLoading = false,
@@ -311,6 +313,7 @@ export const ShellFrame = ({
           <Composer
             from="leco@example.com"
             isSending={isOutboxBusy}
+            recipientSuggestions={recipientSuggestions}
             status={outboxStatus}
             onClose={() => setIsComposerOpen(false)}
             onFlushOutbox={onFlushOutbox}

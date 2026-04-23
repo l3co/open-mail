@@ -1,19 +1,22 @@
+import { ParticipantField } from '@components/composer/ParticipantField';
+
 type ComposerHeaderProps = {
-  bcc: string;
-  cc: string;
+  bcc: string[];
+  cc: string[];
   from: string;
   isCcVisible: boolean;
   isSending: boolean;
   isBccVisible: boolean;
-  onBccChange: (value: string) => void;
-  onCcChange: (value: string) => void;
+  recipientSuggestions: string[];
+  onBccChange: (value: string[]) => void;
+  onCcChange: (value: string[]) => void;
   onClose: () => void;
   onSubjectChange: (value: string) => void;
-  onToChange: (value: string) => void;
+  onToChange: (value: string[]) => void;
   onToggleBcc: () => void;
   onToggleCc: () => void;
   subject: string;
-  to: string;
+  to: string[];
 };
 
 export const ComposerHeader = ({
@@ -23,6 +26,7 @@ export const ComposerHeader = ({
   isCcVisible,
   isSending,
   isBccVisible,
+  recipientSuggestions,
   onBccChange,
   onCcChange,
   onClose,
@@ -56,17 +60,13 @@ export const ComposerHeader = ({
         <input disabled readOnly value={from} />
       </label>
 
-      <label className="composer-field-row">
-        <span>To</span>
-        <input
-          autoFocus
-          onChange={(event) => onToChange(event.target.value)}
-          placeholder="Add recipients"
-          required
-          type="email"
-          value={to}
-        />
-      </label>
+      <ParticipantField
+        label="To"
+        onChange={onToChange}
+        placeholder="Add recipients"
+        suggestions={recipientSuggestions}
+        value={to}
+      />
 
       <div className="composer-secondary-actions">
         <button onClick={onToggleCc} type="button">
@@ -78,17 +78,23 @@ export const ComposerHeader = ({
       </div>
 
       {isCcVisible ? (
-        <label className="composer-field-row">
-          <span>Cc</span>
-          <input onChange={(event) => onCcChange(event.target.value)} placeholder="Add Cc recipients" value={cc} />
-        </label>
+        <ParticipantField
+          label="Cc"
+          onChange={onCcChange}
+          placeholder="Add Cc recipients"
+          suggestions={recipientSuggestions}
+          value={cc}
+        />
       ) : null}
 
       {isBccVisible ? (
-        <label className="composer-field-row">
-          <span>Bcc</span>
-          <input onChange={(event) => onBccChange(event.target.value)} placeholder="Add Bcc recipients" value={bcc} />
-        </label>
+        <ParticipantField
+          label="Bcc"
+          onChange={onBccChange}
+          placeholder="Add Bcc recipients"
+          suggestions={recipientSuggestions}
+          value={bcc}
+        />
       ) : null}
 
       <label className="composer-field-row">
