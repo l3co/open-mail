@@ -39,6 +39,19 @@ const toSafeHtml = (value: string) =>
 
 const toMailAddresses = (emails: string[]) => emails.map((email) => ({ name: null, email }));
 
+const htmlToPlainText = (value: string) =>
+  value
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .trim();
+
 const useApplySelectedTheme = () => {
   const themeId = useUIStore((state) => state.themeId);
 
@@ -124,8 +137,8 @@ const MailShell = () => {
         bcc: toMailAddresses(draft.bcc),
         replyTo: null,
         subject: draft.subject,
-        htmlBody: toSafeHtml(draft.body),
-        plainBody: draft.body,
+        htmlBody: draft.body.trim().startsWith('<') ? draft.body : toSafeHtml(draft.body),
+        plainBody: htmlToPlainText(draft.body),
         inReplyTo: null,
         references: [],
         attachments: []

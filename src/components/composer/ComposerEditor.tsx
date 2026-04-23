@@ -1,30 +1,54 @@
+import Placeholder from '@tiptap/extension-placeholder';
+import StarterKit from '@tiptap/starter-kit';
+import { EditorContent, useEditor } from '@tiptap/react';
+import { ComposerToolbar } from '@components/composer/ComposerToolbar';
+
 type ComposerEditorProps = {
   body: string;
   onBodyChange: (value: string) => void;
 };
 
-export const ComposerEditor = ({ body, onBodyChange }: ComposerEditorProps) => (
-  <div className="composer-editor-shell">
-    <div className="composer-toolbar" aria-label="Composer toolbar">
-      <button disabled type="button">
-        Bold
-      </button>
-      <button disabled type="button">
-        Italic
-      </button>
-      <button disabled type="button">
-        Link
-      </button>
-      <span>Rich text lands next</span>
+const toInitialHtml = (body: string) => {
+  if (!body.trim()) {
+    return '<p></p>';
+  }
+
+  if (body.trim().startsWith('<')) {
+    return body;
+  }
+
+  return `<p>${body}</p>`;
+};
+
+export const ComposerEditor = ({ body, onBodyChange }: ComposerEditorProps) => {
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit,
+      Placeholder.configure({
+        placeholder: 'Write your message...'
+      })
+    ],
+    content: toInitialHtml(body),
+    editorProps: {
+      attributes: {
+        'aria-label': 'Message',
+        class: 'composer-rich-editor',
+        role: 'textbox'
+      }
+    },
+    onUpdate: ({ editor: currentEditor }) => {
+      onBodyChange(currentEditor.getHTML());
+    }
+  });
+
+  return (
+    <div className="composer-editor-shell">
+      <ComposerToolbar editor={editor} />
+      <div className="composer-editor-field">
+        <span>Message</span>
+        <EditorContent editor={editor} />
+      </div>
     </div>
-    <label className="composer-editor-field">
-      <span>Message</span>
-      <textarea
-        onChange={(event) => onBodyChange(event.target.value)}
-        placeholder="Write your message..."
-        rows={10}
-        value={body}
-      />
-    </label>
-  </div>
-);
+  );
+};

@@ -382,6 +382,8 @@ export function ComposerToolbar({ editor }: { editor: Editor }) {
 - [ ] Paste de HTML preserva formatacao
 - [ ] Paste de imagem do clipboard funciona
 
+> Status: `ComposerEditor` agora usa TipTap com `StarterKit`, `Link` e `Placeholder`, mais toolbar basica para bold, italic, listas, quote e links. O body do composer ja sai como HTML para o outbox e o `plainBody` e derivado no app. Underline, headings extras, imagens inline, atalhos dedicados e refinamentos de paste ficam para os proximos cortes.
+
 ---
 
 ### 5.4 — Attachments no Composer

@@ -24,7 +24,7 @@ type ComposerProps = {
 
 const defaultDraft: ComposerDraft = {
   bcc: [],
-  body: 'Open Mail phase 5 composer is ready for the next review.',
+  body: '<p>Open Mail phase 5 composer is ready for the next review.</p>',
   cc: [],
   subject: 'Desktop alpha update',
   to: ['team@example.com']

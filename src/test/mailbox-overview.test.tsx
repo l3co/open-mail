@@ -326,9 +326,6 @@ describe('mailbox overview integration', () => {
       }
     });
     fireEvent.change(screen.getByLabelText(/^subject$/i), { target: { value: 'Review package' } });
-    fireEvent.change(screen.getByLabelText(/^message$/i), {
-      target: { value: 'This queued draft is ready for validation.' }
-    });
     fireEvent.click(screen.getByRole('button', { name: /^queue$/i }));
 
     await waitFor(() => {
