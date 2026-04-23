@@ -653,14 +653,16 @@ npm install -D @types/dompurify
 - [x] Inline images CID resolvidas
 - [x] Plain text formatado com escape seguro
 - [x] Tabelas de layout seguras
-- [ ] Attachments com download e preview
-- [ ] Thread actions (archive, trash, star, move, label)
-- [ ] Busca full-text + filtros estruturados
-- [ ] Undo/redo funcional
+- [x] Attachments com download e preview
+- [x] Thread actions (archive, trash, star, move, label)
+- [x] Busca full-text + filtros estruturados
+- [x] Undo/redo funcional
 - [x] Keyboard shortcuts (j/k, e, #, s, r, f, v, l)
 - [x] Mark as read ao visualizar
 - [x] Testes passando
 - [ ] CI green
+
+> Fechamento: os entregaveis da fase 4 estao implementados localmente. O workflow em `.github/workflows/ci.yml` agora valida web (`typecheck`, `lint`, `vitest`) e Rust/Tauri (`cargo test`); o item "CI green" continua pendente ate a primeira execucao no GitHub concluir com sucesso.
 
 ---
 
