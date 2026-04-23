@@ -136,3 +136,19 @@ CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
     content_rowid='rowid'
 );
 
+CREATE TRIGGER IF NOT EXISTS messages_fts_insert AFTER INSERT ON messages BEGIN
+    INSERT INTO messages_fts(rowid, subject, body, plain_text)
+    VALUES (new.rowid, new.subject, new.body, new.plain_text);
+END;
+
+CREATE TRIGGER IF NOT EXISTS messages_fts_delete AFTER DELETE ON messages BEGIN
+    INSERT INTO messages_fts(messages_fts, rowid, subject, body, plain_text)
+    VALUES ('delete', old.rowid, old.subject, old.body, old.plain_text);
+END;
+
+CREATE TRIGGER IF NOT EXISTS messages_fts_update AFTER UPDATE ON messages BEGIN
+    INSERT INTO messages_fts(messages_fts, rowid, subject, body, plain_text)
+    VALUES ('delete', old.rowid, old.subject, old.body, old.plain_text);
+    INSERT INTO messages_fts(rowid, subject, body, plain_text)
+    VALUES (new.rowid, new.subject, new.body, new.plain_text);
+END;
