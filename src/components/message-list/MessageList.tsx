@@ -8,6 +8,9 @@ type MessageListProps = {
   selectedMessageId: string | null;
   threadSubject: string;
   onDownloadAttachment?: (attachment: AttachmentRecord) => void;
+  onForward?: (message: MessageRecord) => void;
+  onReply?: (message: MessageRecord) => void;
+  onReplyAll?: (message: MessageRecord) => void;
   onSelectMessage: (messageId: string) => void;
   onOpenExternalLink?: (url: string) => void;
   resolveInlineImageUrl?: (localPath: string) => string;
@@ -18,12 +21,16 @@ export const MessageList = ({
   selectedMessageId,
   threadSubject,
   onDownloadAttachment,
+  onForward,
+  onReply,
+  onReplyAll,
   onSelectMessage,
   onOpenExternalLink,
   resolveInlineImageUrl
 }: MessageListProps) => {
   const chronologicalMessages = useMemo(() => sortMessagesChronologically(messages), [messages]);
-  const latestMessageId = chronologicalMessages.at(-1)?.id ?? null;
+  const latestMessage = chronologicalMessages.at(-1) ?? null;
+  const latestMessageId = latestMessage?.id ?? null;
   const expandedMessageId = selectedMessageId ?? latestMessageId;
 
   if (!chronologicalMessages.length) {
@@ -41,7 +48,10 @@ export const MessageList = ({
             key={message.id}
             message={message}
             onDownloadAttachment={onDownloadAttachment}
+            onForward={onForward}
             onOpenExternalLink={onOpenExternalLink}
+            onReply={onReply}
+            onReplyAll={onReplyAll}
             onSelectMessage={onSelectMessage}
             resolveInlineImageUrl={resolveInlineImageUrl}
           />
@@ -49,7 +59,15 @@ export const MessageList = ({
       </div>
       <div className="quick-reply-card">
         <strong>Quick reply</strong>
-        <p>Composer integration lands in Phase 5.</p>
+        <p>Jump into the composer with the latest message already quoted.</p>
+        <div className="quick-reply-actions">
+          <button disabled={!latestMessage} onClick={() => latestMessage && onReply?.(latestMessage)} type="button">
+            Reply
+          </button>
+          <button disabled={!latestMessage} onClick={() => latestMessage && onReplyAll?.(latestMessage)} type="button">
+            Reply all
+          </button>
+        </div>
       </div>
     </div>
   );

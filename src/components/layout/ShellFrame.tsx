@@ -7,6 +7,7 @@ import { MailTopbar } from '@components/layout/MailTopbar';
 import { MessageReaderPanel } from '@components/layout/MessageReaderPanel';
 import { ThreadListPanel, type ThreadDialogRequest } from '@components/layout/ThreadListPanel';
 import { type KeyboardShortcutMap, useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
+import { prepareReplyDraft } from '@lib/compose-utils';
 import type { AttachmentRecord, FolderRecord, MessageRecord, SyncStatusDetail, ThreadSummary } from '@lib/contracts';
 import type { StoreThreadAction } from '@stores/useThreadStore';
 import { type ShortcutAction, useShortcutStore } from '@stores/useShortcutStore';
@@ -83,6 +84,7 @@ export const ShellFrame = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const workspaceRef = useRef<HTMLElement>(null);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [composerInitialDraft, setComposerInitialDraft] = useState<Partial<ComposerDraft> | undefined>(undefined);
   const [isResizingThreadPanel, setIsResizingThreadPanel] = useState(false);
   const [shortcutStatusLabel, setShortcutStatusLabel] = useState<string | null>(null);
   const [threadDialogRequest, setThreadDialogRequest] = useState<ThreadDialogRequest | null>(null);
@@ -126,14 +128,43 @@ export const ShellFrame = ({
       onSelectFolder(folder.id);
     }
   }, [folders, onSelectFolder]);
+  const activeMessage = useMemo(() => {
+    if (!messages.length) {
+      return null;
+    }
+
+    return (
+      messages.find((message) => message.id === selectedMessageId) ??
+      [...messages].sort((first, second) => new Date(first.date).getTime() - new Date(second.date).getTime()).at(-1) ??
+      null
+    );
+  }, [messages, selectedMessageId]);
   const workspaceStyle = {
     '--thread-panel-width': `${threadPanelWidth}%`
   } as CSSProperties;
-  const toggleComposer = () => setIsComposerOpen((current) => !current);
+  const openComposerWithDraft = useCallback((draft?: Partial<ComposerDraft>) => {
+    setSidebarCollapsed(false);
+    setComposerInitialDraft(draft);
+    setIsComposerOpen(true);
+  }, [setSidebarCollapsed]);
+  const toggleComposer = () => {
+    if (isComposerOpen) {
+      setIsComposerOpen(false);
+      setComposerInitialDraft(undefined);
+      return;
+    }
+
+    openComposerWithDraft(undefined);
+  };
   const toggleSidebarAndCloseComposer = () => {
     toggleSidebar();
     setIsComposerOpen(false);
+    setComposerInitialDraft(undefined);
   };
+  const handleReplyMessage = useCallback((message: MessageRecord, replyAll: boolean) => {
+    openComposerWithDraft(prepareReplyDraft(message, replyAll));
+    setShortcutStatusLabel(replyAll ? 'Reply all draft ready' : 'Reply draft ready');
+  }, [openComposerWithDraft]);
   const reportThreadShortcut = useCallback((label: string) => {
     setShortcutStatusLabel(
       selectedThread ? `${label}: ${selectedThread.subject}` : `${label}: no thread selected`
@@ -168,14 +199,8 @@ export const ShellFrame = ({
     const actionHandlers: Partial<Record<ShortcutAction, () => void>> = {
       'action.redo': () => setShortcutStatusLabel('Redo shortcut ready'),
       'action.undo': runUndoShortcut,
-      'compose.new': () => {
-        setSidebarCollapsed(false);
-        setIsComposerOpen(true);
-      },
-      'compose.newWindow': () => {
-        setSidebarCollapsed(false);
-        setIsComposerOpen(true);
-      },
+      'compose.new': () => openComposerWithDraft(undefined),
+      'compose.newWindow': () => openComposerWithDraft(undefined),
       'compose.send': () => setShortcutStatusLabel('Composer send shortcut ready'),
       'nav.drafts': () => selectSystemFolder('drafts'),
       'nav.inbox': () => selectSystemFolder('inbox'),
@@ -188,12 +213,27 @@ export const ShellFrame = ({
       'thread.move': () => openSelectedThreadDialog('move', 'Move shortcut opened'),
       'thread.next': () => selectThreadByOffset(1),
       'thread.prev': () => selectThreadByOffset(-1),
-      'thread.reply': () => reportThreadShortcut('Reply shortcut queued'),
-      'thread.replyAll': () => reportThreadShortcut('Reply all shortcut queued'),
+      'thread.reply': () => {
+        if (!activeMessage) {
+          reportThreadShortcut('Reply shortcut queued');
+          return;
+        }
+
+        handleReplyMessage(activeMessage, false);
+      },
+      'thread.replyAll': () => {
+        if (!activeMessage) {
+          reportThreadShortcut('Reply all shortcut queued');
+          return;
+        }
+
+        handleReplyMessage(activeMessage, true);
+      },
       'thread.star': () => runSelectedThreadAction('star', 'Star shortcut applied'),
       'thread.trash': () => runSelectedThreadAction('trash', 'Trash shortcut applied'),
       'ui.back': () => {
         setIsComposerOpen(false);
+        setComposerInitialDraft(undefined);
         searchInputRef.current?.blur();
       }
     };
@@ -207,13 +247,15 @@ export const ShellFrame = ({
       return shortcuts;
     }, {});
   }, [
+    activeMessage,
+    handleReplyMessage,
+    openComposerWithDraft,
     openSelectedThreadDialog,
     reportThreadShortcut,
     runSelectedThreadAction,
     runUndoShortcut,
     selectSystemFolder,
     selectThreadByOffset,
-    setSidebarCollapsed,
     shortcutBindings
   ]);
 
@@ -331,15 +373,20 @@ export const ShellFrame = ({
         {isComposerOpen ? (
           <Composer
             from="leco@example.com"
+            initialDraft={composerInitialDraft}
             isSending={isOutboxBusy}
             recipientSuggestions={recipientSuggestions}
             status={outboxStatus}
-            onClose={() => setIsComposerOpen(false)}
+            onClose={() => {
+              setIsComposerOpen(false);
+              setComposerInitialDraft(undefined);
+            }}
             onFlushOutbox={onFlushOutbox}
             onSend={async (draft) => {
               const didQueue = await onSendDraft(draft);
               if (didQueue) {
                 setIsComposerOpen(false);
+                setComposerInitialDraft(undefined);
               }
               return didQueue;
             }}
@@ -393,7 +440,10 @@ export const ShellFrame = ({
             messages={messages}
             selectedMessageId={selectedMessageId}
             selectedThread={selectedThread}
+            onForwardMessage={(message) => reportThreadShortcut(`Forward ready: ${message.subject}`)}
             onOpenExternalLink={onOpenExternalLink}
+            onReplyAllMessage={(message) => handleReplyMessage(message, true)}
+            onReplyMessage={(message) => handleReplyMessage(message, false)}
             onSelectMessage={onSelectMessage}
             onDownloadAttachment={onDownloadAttachment}
             resolveInlineImageUrl={resolveInlineImageUrl}

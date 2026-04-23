@@ -7,7 +7,10 @@ type MessageReaderPanelProps = {
   messages: MessageRecord[];
   selectedMessageId: string | null;
   selectedThread: ThreadSummary | null;
+  onForwardMessage: (message: MessageRecord) => void;
   onOpenExternalLink: (url: string) => void;
+  onReplyAllMessage: (message: MessageRecord) => void;
+  onReplyMessage: (message: MessageRecord) => void;
   onSelectMessage: (messageId: string) => void;
   onDownloadAttachment: (attachment: AttachmentRecord) => void;
   resolveInlineImageUrl: (localPath: string) => string;
@@ -18,7 +21,10 @@ export const MessageReaderPanel = ({
   messages,
   selectedMessageId,
   selectedThread,
+  onForwardMessage,
   onOpenExternalLink,
+  onReplyAllMessage,
+  onReplyMessage,
   onSelectMessage,
   onDownloadAttachment,
   resolveInlineImageUrl
@@ -44,7 +50,10 @@ export const MessageReaderPanel = ({
           messages={messages}
           selectedMessageId={selectedMessageId}
           threadSubject={selectedThread.subject}
+          onForward={onForwardMessage}
           onOpenExternalLink={onOpenExternalLink}
+          onReply={onReplyMessage}
+          onReplyAll={onReplyAllMessage}
           onSelectMessage={onSelectMessage}
           onDownloadAttachment={onDownloadAttachment}
           resolveInlineImageUrl={resolveInlineImageUrl}

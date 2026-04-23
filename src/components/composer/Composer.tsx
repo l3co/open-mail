@@ -14,6 +14,8 @@ type ComposerDraft = {
   bcc: string[];
   body: string;
   cc: string[];
+  inReplyTo: string | null;
+  references: string[];
   subject: string;
   to: string[];
 };
@@ -34,6 +36,8 @@ const defaultDraft: ComposerDraft = {
   bcc: [],
   body: '<p>Open Mail phase 5 composer is ready for the next review.</p>',
   cc: [],
+  inReplyTo: null,
+  references: [],
   subject: 'Desktop alpha update',
   to: ['team@example.com']
 };
@@ -59,6 +63,12 @@ export const Composer = ({
   const [isCcVisible, setIsCcVisible] = useState(Boolean(mergedDraft.cc.length));
   const [isBccVisible, setIsBccVisible] = useState(Boolean(mergedDraft.bcc.length));
   const [localStatus, setLocalStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraft(mergedDraft);
+    setIsCcVisible(Boolean(mergedDraft.cc.length));
+    setIsBccVisible(Boolean(mergedDraft.bcc.length));
+  }, [mergedDraft]);
 
   const isDirty =
     draft.attachments.length !== mergedDraft.attachments.length ||

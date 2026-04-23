@@ -12,6 +12,9 @@ type MessageItemProps = {
   message: MessageRecord;
   onDownloadAttachment?: (attachment: AttachmentRecord) => void;
   onOpenExternalLink?: (url: string) => void;
+  onForward?: (message: MessageRecord) => void;
+  onReply?: (message: MessageRecord) => void;
+  onReplyAll?: (message: MessageRecord) => void;
   onSelectMessage: (messageId: string) => void;
   resolveInlineImageUrl?: (localPath: string) => string;
 };
@@ -22,6 +25,9 @@ export const MessageItem = ({
   message,
   onDownloadAttachment,
   onOpenExternalLink,
+  onForward,
+  onReply,
+  onReplyAll,
   onSelectMessage,
   resolveInlineImageUrl
 }: MessageItemProps) => {
@@ -65,7 +71,11 @@ export const MessageItem = ({
           ))}
         </div>
       ) : null}
-      <MessageActions />
+      <MessageActions
+        onForward={onForward ? () => onForward(message) : undefined}
+        onReply={onReply ? () => onReply(message) : undefined}
+        onReplyAll={onReplyAll ? () => onReplyAll(message) : undefined}
+      />
     </article>
   );
 };

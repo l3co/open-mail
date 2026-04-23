@@ -739,6 +739,8 @@ function buildQuotedText(message: Message): string {
 - [ ] Headers corretos (In-Reply-To, References)
 - [ ] Thread continuity (reply fica no mesmo thread)
 
+> Status: `reply` e `reply all` agora preenchem o composer a partir da mensagem selecionada, com `To/Cc`, subject com prefixo `Re:`, quoted body e headers `In-Reply-To`/`References` preservados no enqueue. `Forward` e reaproveitamento de attachments originais ficam para o proximo corte.
+
 ---
 
 ## Dependencias Frontend Adicionais

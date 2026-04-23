@@ -182,8 +182,8 @@ const MailShell = () => {
         subject: draft.subject,
         htmlBody: draft.body.trim().startsWith('<') ? draft.body : toSafeHtml(draft.body),
         plainBody: htmlToPlainText(draft.body),
-        inReplyTo: null,
-        references: [],
+        inReplyTo: draft.inReplyTo,
+        references: draft.references,
         attachments: await toMimeAttachments(draft.attachments)
       };
 

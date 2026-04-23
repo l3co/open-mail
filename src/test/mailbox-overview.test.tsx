@@ -357,4 +357,26 @@ describe('mailbox overview integration', () => {
       expect(screen.getByText('Queued 1 recipient(s)')).toBeInTheDocument();
     });
   });
+
+  it('opens a reply draft with quoted content once the selected message is available', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Premium motion system approved' })).toBeInTheDocument();
+    expect((await screen.findAllByText('Vamos fechar a base visual do composer e da thread list hoje.')).length).toBeGreaterThan(0);
+
+    fireEvent.keyDown(window, { key: 'r' });
+
+    const composer = await screen.findByRole('region', { name: /composer/i });
+    expect(composer).toBeInTheDocument();
+    expect(screen.getByLabelText(/^subject$/i)).toHaveValue('Re: Premium motion system approved');
+    expect(within(composer).getByTitle('atlas@example.com')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Message' })).toHaveTextContent('On Mar 13, 2026');
+    expect(screen.getByRole('textbox', { name: 'Message' })).toHaveTextContent(
+      'Vamos fechar a base visual do composer e da thread list hoje.'
+    );
+  });
 });
