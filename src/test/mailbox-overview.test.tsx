@@ -1,10 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from '@/App';
 import { useShortcutStore } from '@stores/useShortcutStore';
 
 describe('mailbox overview integration', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders mailbox data in the shell', async () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -315,7 +319,8 @@ describe('mailbox overview integration', () => {
     );
 
     fireEvent.click(await screen.findByRole('button', { name: /new message/i }));
-    expect(await screen.findByRole('region', { name: /composer/i })).toBeInTheDocument();
+    const composer = await screen.findByRole('region', { name: /composer/i });
+    expect(composer).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Message' })).toHaveTextContent('Best,');
     fireEvent.click(screen.getByRole('button', { name: /add cc/i }));
     fireEvent.focus(screen.getByLabelText(/^to$/i));
@@ -357,6 +362,35 @@ describe('mailbox overview integration', () => {
     await waitFor(() => {
       expect(screen.getByText('Queued 1 recipient(s)')).toBeInTheDocument();
     });
+  });
+
+  it('restores a locally autosaved draft when reopening the composer', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /new message/i }));
+    const composer = await screen.findByRole('region', { name: /composer/i });
+    expect(composer).toBeInTheDocument();
+
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByLabelText(/^subject$/i), { target: { value: 'Autosaved subject' } });
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(screen.getByLabelText('Mailbox status')).toHaveTextContent('Draft saved locally');
+
+    vi.useRealTimers();
+    fireEvent.click(within(composer).getByRole('button', { name: /close composer/i }));
+    expect(screen.queryByRole('region', { name: /composer/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /new message/i }));
+    expect(await screen.findByRole('region', { name: /composer/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/^subject$/i)).toHaveValue('Autosaved subject');
   });
 
   it('opens a reply draft with quoted content once the selected message is available', async () => {

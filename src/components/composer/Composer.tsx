@@ -30,6 +30,8 @@ type ComposerProps = {
   recipientSuggestions: string[];
   status: string;
   onClose: () => void;
+  onDiscard?: () => void;
+  onDraftChange?: (draft: ComposerDraft) => void;
   onFlushOutbox: () => Promise<void>;
   onSend: (draft: ComposerDraft) => Promise<boolean>;
 };
@@ -52,6 +54,8 @@ export const Composer = ({
   recipientSuggestions,
   status,
   onClose,
+  onDiscard,
+  onDraftChange,
   onFlushOutbox,
   onSend
 }: ComposerProps) => {
@@ -101,12 +105,20 @@ export const Composer = ({
     setLocalStatus(null);
   }, [draft.attachments, draft.bcc, draft.body, draft.cc, draft.subject, draft.to]);
 
+  useEffect(() => {
+    onDraftChange?.(draft);
+  }, [draft, onDraftChange]);
+
   const handleClose = () => {
+    onClose();
+  };
+
+  const handleDiscard = () => {
     if (isDirty && !window.confirm('Discard this draft?')) {
       return;
     }
 
-    onClose();
+    onDiscard?.();
   };
 
   const handleSend = async () => {
@@ -211,7 +223,7 @@ export const Composer = ({
       <ComposerFooter
         isSending={isSending}
         onEditSignature={() => setIsSignaturePanelOpen((current) => !current)}
-        onDiscard={handleClose}
+        onDiscard={handleDiscard}
         onFlushOutbox={onFlushOutbox}
         onSend={handleSend}
         status={localStatus ?? status}

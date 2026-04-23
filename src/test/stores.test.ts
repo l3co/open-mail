@@ -84,9 +84,13 @@ const message = (id: string, thread_id = 'thr_1'): MessageRecord => ({
 const draft = (id: string): DraftRecord => ({
   id,
   accountId: 'acc_1',
-  to: [{ name: null, email: 'team@example.com' }],
-  subject: id,
+  bcc: [],
   body: 'Hello',
+  cc: [],
+  inReplyTo: null,
+  references: [],
+  subject: id,
+  to: ['team@example.com'],
   updatedAt: now
 });
 

@@ -54,7 +54,7 @@ describe('Composer send flow', () => {
   });
 
   it('discards a dirty draft through the footer action', async () => {
-    const onClose = vi.fn();
+    const onDiscard = vi.fn();
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     render(
@@ -63,7 +63,8 @@ describe('Composer send flow', () => {
         isSending={false}
         recipientSuggestions={[]}
         status="Composer ready"
-        onClose={onClose}
+        onClose={() => undefined}
+        onDiscard={onDiscard}
         onFlushOutbox={vi.fn().mockResolvedValue(undefined)}
         onSend={vi.fn().mockResolvedValue(true)}
       />
@@ -74,7 +75,7 @@ describe('Composer send flow', () => {
 
     await waitFor(() => {
       expect(confirmSpy).toHaveBeenCalledWith('Discard this draft?');
-      expect(onClose).toHaveBeenCalled();
+      expect(onDiscard).toHaveBeenCalled();
     });
   });
 

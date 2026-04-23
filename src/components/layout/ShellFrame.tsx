@@ -6,11 +6,13 @@ import { MailStatusBar } from '@components/layout/MailStatusBar';
 import { MailTopbar } from '@components/layout/MailTopbar';
 import { MessageReaderPanel } from '@components/layout/MessageReaderPanel';
 import { ThreadListPanel, type ThreadDialogRequest } from '@components/layout/ThreadListPanel';
+import { useDraftAutoSave } from '@hooks/useDraftAutoSave';
 import { type KeyboardShortcutMap, useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
 import { prepareForwardDraft, prepareReplyDraft } from '@lib/compose-utils';
 import type { AttachmentRecord, FolderRecord, MessageRecord, SyncStatusDetail, ThreadSummary } from '@lib/contracts';
 import { applySignatureHtml } from '@lib/signature-utils';
 import { resolveSignatureForAccount, useSignatureStore } from '@stores/useSignatureStore';
+import { useDraftStore } from '@stores/useDraftStore';
 import type { StoreThreadAction } from '@stores/useThreadStore';
 import { type ShortcutAction, useShortcutStore } from '@stores/useShortcutStore';
 import { useUndoStore } from '@stores/useUndoStore';
@@ -87,6 +89,8 @@ export const ShellFrame = ({
   const workspaceRef = useRef<HTMLElement>(null);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [composerInitialDraft, setComposerInitialDraft] = useState<Partial<ComposerDraft> | undefined>(undefined);
+  const [composerDraftId, setComposerDraftId] = useState<string | null>(null);
+  const [composerLiveDraft, setComposerLiveDraft] = useState<ComposerDraft | null>(null);
   const [isResizingThreadPanel, setIsResizingThreadPanel] = useState(false);
   const [shortcutStatusLabel, setShortcutStatusLabel] = useState<string | null>(null);
   const [threadDialogRequest, setThreadDialogRequest] = useState<ThreadDialogRequest | null>(null);
@@ -106,12 +110,27 @@ export const ShellFrame = ({
   const setThreadPanelWidth = useUIStore((state) => state.setThreadPanelWidth);
   const signatures = useSignatureStore((state) => state.signatures);
   const defaultSignatureId = useSignatureStore((state) => state.defaultSignatureId);
+  const drafts = useDraftStore((state) => state.drafts);
+  const activeDraftId = useDraftStore((state) => state.activeDraftId);
+  const editDraft = useDraftStore((state) => state.editDraft);
+  const removeDraft = useDraftStore((state) => state.removeDraft);
+  const selectDraft = useDraftStore((state) => state.selectDraft);
   const activeFolder = folders.find((folder) => folder.id === activeFolderId) ?? null;
   const accountId = folders[0]?.account_id ?? 'acc_demo';
   const defaultSignature = useMemo(
     () => resolveSignatureForAccount(signatures, defaultSignatureId, accountId),
     [accountId, defaultSignatureId, signatures]
   );
+  const activeSavedDraft = useMemo(
+    () => drafts.find((draft) => draft.id === activeDraftId) ?? null,
+    [activeDraftId, drafts]
+  );
+  const resetComposerState = useCallback(() => {
+    setIsComposerOpen(false);
+    setComposerInitialDraft(undefined);
+    setComposerDraftId(null);
+    setComposerLiveDraft(null);
+  }, []);
   const syncPhaseLabel = syncStatusDetail?.phase ? syncStatusDetail.phase.replaceAll('-', ' ') : 'sync idle';
   const syncFoldersLabel = syncStatusDetail ? `${syncStatusDetail.foldersSynced} folders` : '0 folders';
   const syncMessagesLabel = syncStatusDetail
@@ -137,6 +156,23 @@ export const ShellFrame = ({
       onSelectFolder(folder.id);
     }
   }, [folders, onSelectFolder]);
+  const handleAutoSaveDraft = useCallback((draftId: string, draft: ComposerDraft) => {
+    editDraft({
+      id: draftId,
+      accountId,
+      bcc: draft.bcc,
+      body: draft.body,
+      cc: draft.cc,
+      inReplyTo: draft.inReplyTo,
+      references: draft.references,
+      subject: draft.subject,
+      to: draft.to,
+      updatedAt: new Date().toISOString()
+    });
+    setShortcutStatusLabel('Draft saved locally');
+  }, [accountId, editDraft]);
+  useDraftAutoSave(composerDraftId, composerLiveDraft, isComposerOpen, handleAutoSaveDraft);
+
   const activeMessage = useMemo(() => {
     if (!messages.length) {
       return null;
@@ -153,18 +189,34 @@ export const ShellFrame = ({
   } as CSSProperties;
   const openComposerWithDraft = useCallback((draft?: Partial<ComposerDraft>) => {
     setSidebarCollapsed(false);
-    setComposerInitialDraft(
-      draft ??
-        {
-          body: applySignatureHtml('', defaultSignature?.body ?? null)
-        }
-    );
+    if (!draft && activeSavedDraft) {
+      selectDraft(activeSavedDraft.id);
+      setComposerDraftId(activeSavedDraft.id);
+      setComposerInitialDraft({
+        attachments: [],
+        bcc: activeSavedDraft.bcc,
+        body: activeSavedDraft.body,
+        cc: activeSavedDraft.cc,
+        inReplyTo: activeSavedDraft.inReplyTo,
+        references: activeSavedDraft.references,
+        subject: activeSavedDraft.subject,
+        to: activeSavedDraft.to
+      });
+      setComposerLiveDraft(null);
+      setIsComposerOpen(true);
+      return;
+    }
+
+    const nextDraftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    selectDraft(nextDraftId);
+    setComposerDraftId(nextDraftId);
+    setComposerInitialDraft(draft ?? { body: applySignatureHtml('', defaultSignature?.body ?? null) });
+    setComposerLiveDraft(null);
     setIsComposerOpen(true);
-  }, [defaultSignature?.body, setSidebarCollapsed]);
+  }, [activeSavedDraft, defaultSignature?.body, selectDraft, setSidebarCollapsed]);
   const toggleComposer = () => {
     if (isComposerOpen) {
-      setIsComposerOpen(false);
-      setComposerInitialDraft(undefined);
+      resetComposerState();
       return;
     }
 
@@ -172,8 +224,7 @@ export const ShellFrame = ({
   };
   const toggleSidebarAndCloseComposer = () => {
     toggleSidebar();
-    setIsComposerOpen(false);
-    setComposerInitialDraft(undefined);
+    resetComposerState();
   };
   const handleReplyMessage = useCallback((message: MessageRecord, replyAll: boolean) => {
     openComposerWithDraft(prepareReplyDraft(message, replyAll));
@@ -257,8 +308,7 @@ export const ShellFrame = ({
       'thread.star': () => runSelectedThreadAction('star', 'Star shortcut applied'),
       'thread.trash': () => runSelectedThreadAction('trash', 'Trash shortcut applied'),
       'ui.back': () => {
-        setIsComposerOpen(false);
-        setComposerInitialDraft(undefined);
+        resetComposerState();
         searchInputRef.current?.blur();
       }
     };
@@ -280,6 +330,7 @@ export const ShellFrame = ({
     reportThreadShortcut,
     runSelectedThreadAction,
     runUndoShortcut,
+    resetComposerState,
     selectSystemFolder,
     selectThreadByOffset,
     shortcutBindings
@@ -403,16 +454,24 @@ export const ShellFrame = ({
             isSending={isOutboxBusy}
             recipientSuggestions={recipientSuggestions}
             status={outboxStatus}
-            onClose={() => {
-              setIsComposerOpen(false);
-              setComposerInitialDraft(undefined);
+            onClose={resetComposerState}
+            onDiscard={() => {
+              if (composerDraftId) {
+                removeDraft(composerDraftId);
+              }
+              selectDraft(null);
+              resetComposerState();
             }}
+            onDraftChange={setComposerLiveDraft}
             onFlushOutbox={onFlushOutbox}
             onSend={async (draft) => {
               const didQueue = await onSendDraft(draft);
               if (didQueue) {
-                setIsComposerOpen(false);
-                setComposerInitialDraft(undefined);
+                if (composerDraftId) {
+                  removeDraft(composerDraftId);
+                }
+                selectDraft(null);
+                resetComposerState();
               }
               return didQueue;
             }}

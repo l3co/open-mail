@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { beforeEach } from 'vitest';
 import { defaultShortcutBindings, useShortcutStore } from '@stores/useShortcutStore';
+import { useDraftStore } from '@stores/useDraftStore';
 import { useSignatureStore } from '@stores/useSignatureStore';
 import { useThreadStore } from '@stores/useThreadStore';
 import { useUndoStore } from '@stores/useUndoStore';
@@ -33,6 +34,10 @@ beforeEach(() => {
   });
   useShortcutStore.setState({
     bindings: defaultShortcutBindings
+  });
+  useDraftStore.setState({
+    drafts: [],
+    activeDraftId: null
   });
   useSignatureStore.setState({
     signatures: [
