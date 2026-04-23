@@ -9,6 +9,8 @@ import { ThreadListPanel, type ThreadDialogRequest } from '@components/layout/Th
 import { type KeyboardShortcutMap, useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
 import { prepareForwardDraft, prepareReplyDraft } from '@lib/compose-utils';
 import type { AttachmentRecord, FolderRecord, MessageRecord, SyncStatusDetail, ThreadSummary } from '@lib/contracts';
+import { applySignatureHtml } from '@lib/signature-utils';
+import { resolveSignatureForAccount, useSignatureStore } from '@stores/useSignatureStore';
 import type { StoreThreadAction } from '@stores/useThreadStore';
 import { type ShortcutAction, useShortcutStore } from '@stores/useShortcutStore';
 import { useUndoStore } from '@stores/useUndoStore';
@@ -102,7 +104,14 @@ export const ShellFrame = ({
   const toggleLayoutMode = useUIStore((state) => state.toggleLayoutMode);
   const cycleTheme = useUIStore((state) => state.cycleTheme);
   const setThreadPanelWidth = useUIStore((state) => state.setThreadPanelWidth);
+  const signatures = useSignatureStore((state) => state.signatures);
+  const defaultSignatureId = useSignatureStore((state) => state.defaultSignatureId);
   const activeFolder = folders.find((folder) => folder.id === activeFolderId) ?? null;
+  const accountId = folders[0]?.account_id ?? 'acc_demo';
+  const defaultSignature = useMemo(
+    () => resolveSignatureForAccount(signatures, defaultSignatureId, accountId),
+    [accountId, defaultSignatureId, signatures]
+  );
   const syncPhaseLabel = syncStatusDetail?.phase ? syncStatusDetail.phase.replaceAll('-', ' ') : 'sync idle';
   const syncFoldersLabel = syncStatusDetail ? `${syncStatusDetail.foldersSynced} folders` : '0 folders';
   const syncMessagesLabel = syncStatusDetail
@@ -144,9 +153,14 @@ export const ShellFrame = ({
   } as CSSProperties;
   const openComposerWithDraft = useCallback((draft?: Partial<ComposerDraft>) => {
     setSidebarCollapsed(false);
-    setComposerInitialDraft(draft);
+    setComposerInitialDraft(
+      draft ??
+        {
+          body: applySignatureHtml('', defaultSignature?.body ?? null)
+        }
+    );
     setIsComposerOpen(true);
-  }, [setSidebarCollapsed]);
+  }, [defaultSignature?.body, setSidebarCollapsed]);
   const toggleComposer = () => {
     if (isComposerOpen) {
       setIsComposerOpen(false);

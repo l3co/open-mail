@@ -495,6 +495,8 @@ interface SignatureState {
 - [ ] Editavel dentro do composer
 - [ ] Persistida no backend
 
+> Status: o composer agora tem store local persistida de assinaturas, assinatura padrao global inserida automaticamente em novos emails e painel compacto dentro do composer para criar, editar, deletar e aplicar a assinatura atual. Persistencia no backend e defaults por conta ainda ficam para os proximos cortes.
+
 ---
 
 ### 5.6 — Draft Auto-Save

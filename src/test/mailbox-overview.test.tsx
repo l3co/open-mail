@@ -316,6 +316,7 @@ describe('mailbox overview integration', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /new message/i }));
     expect(await screen.findByRole('region', { name: /composer/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Message' })).toHaveTextContent('Best,');
     fireEvent.click(screen.getByRole('button', { name: /add cc/i }));
     fireEvent.focus(screen.getByLabelText(/^to$/i));
     fireEvent.change(screen.getByLabelText(/^to$/i), { target: { value: 'atl' } });

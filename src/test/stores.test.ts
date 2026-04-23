@@ -4,6 +4,7 @@ import { useDraftStore, type DraftRecord } from '@stores/useDraftStore';
 import { useFolderStore } from '@stores/useFolderStore';
 import { useMessageStore } from '@stores/useMessageStore';
 import { useSearchStore } from '@stores/useSearchStore';
+import { useSignatureStore } from '@stores/useSignatureStore';
 import { useSyncStore } from '@stores/useSyncStore';
 import { useThreadStore } from '@stores/useThreadStore';
 import type { FolderRecord, MessageRecord, SyncStatusDetail, ThreadRecord, ThreadSummary } from '@lib/contracts';
@@ -121,6 +122,17 @@ describe('phase 3 domain stores', () => {
     });
     useMessageStore.setState({ messagesByThreadId: {}, selectedMessageId: null });
     useDraftStore.setState({ drafts: [], activeDraftId: null });
+    useSignatureStore.setState({
+      signatures: [
+        {
+          id: 'sig_default',
+          title: 'Default signature',
+          body: '<p>Best,<br />Leco</p>',
+          accountId: null
+        }
+      ],
+      defaultSignatureId: 'sig_default'
+    });
     useSyncStore.setState({ syncByAccountId: {}, lastEventState: { kind: 'not-started' } });
     useSearchStore.setState({ query: '', results: [], isSearching: false });
   });
@@ -281,6 +293,27 @@ describe('phase 3 domain stores', () => {
 
     useDraftStore.getState().removeDraft('draft_1');
     expect(useDraftStore.getState().activeDraftId).toBeNull();
+  });
+
+  it('creates, updates, defaults, and deletes signatures safely', () => {
+    const createdId = useSignatureStore.getState().create({
+      accountId: 'acc_1',
+      body: '<p>Regards,<br />Team</p>',
+      title: 'Account signature'
+    });
+
+    useSignatureStore.getState().update(createdId, { title: 'Updated signature' });
+    useSignatureStore.getState().setDefault(createdId);
+
+    expect(useSignatureStore.getState().defaultSignatureId).toBe(createdId);
+    expect(useSignatureStore.getState().signatures.find((signature) => signature.id === createdId)?.title).toBe(
+      'Updated signature'
+    );
+
+    useSignatureStore.getState().delete(createdId);
+
+    expect(useSignatureStore.getState().signatures.some((signature) => signature.id === createdId)).toBe(false);
+    expect(useSignatureStore.getState().defaultSignatureId).toBe('sig_default');
   });
 
   it('tracks sync status by account and search results', () => {

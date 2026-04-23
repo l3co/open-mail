@@ -3,6 +3,9 @@ import { ComposerAttachments } from '@components/composer/ComposerAttachments';
 import { ComposerEditor } from '@components/composer/ComposerEditor';
 import { ComposerFooter } from '@components/composer/ComposerFooter';
 import { ComposerHeader } from '@components/composer/ComposerHeader';
+import { ComposerSignaturePanel } from '@components/composer/ComposerSignaturePanel';
+import { applySignatureHtml, hasSignatureHtml } from '@lib/signature-utils';
+import { useSignatureStore } from '@stores/useSignatureStore';
 
 type ComposerAttachment = {
   file: File;
@@ -62,13 +65,22 @@ export const Composer = ({
   const [draft, setDraft] = useState<ComposerDraft>(mergedDraft);
   const [isCcVisible, setIsCcVisible] = useState(Boolean(mergedDraft.cc.length));
   const [isBccVisible, setIsBccVisible] = useState(Boolean(mergedDraft.bcc.length));
+  const [isSignaturePanelOpen, setIsSignaturePanelOpen] = useState(false);
+  const [activeSignatureId, setActiveSignatureId] = useState<string | null>(null);
   const [localStatus, setLocalStatus] = useState<string | null>(null);
+  const signatures = useSignatureStore((state) => state.signatures);
+  const defaultSignatureId = useSignatureStore((state) => state.defaultSignatureId);
+  const createSignature = useSignatureStore((state) => state.create);
+  const deleteSignature = useSignatureStore((state) => state.delete);
+  const setDefaultSignature = useSignatureStore((state) => state.setDefault);
+  const updateSignature = useSignatureStore((state) => state.update);
 
   useEffect(() => {
     setDraft(mergedDraft);
     setIsCcVisible(Boolean(mergedDraft.cc.length));
     setIsBccVisible(Boolean(mergedDraft.bcc.length));
-  }, [mergedDraft]);
+    setActiveSignatureId(hasSignatureHtml(mergedDraft.body) ? defaultSignatureId : null);
+  }, [defaultSignatureId, mergedDraft]);
 
   const isDirty =
     draft.attachments.length !== mergedDraft.attachments.length ||
@@ -110,6 +122,12 @@ export const Composer = ({
     }
 
     await onSend(draft);
+  };
+
+  const applySignature = (signatureId: string | null) => {
+    const signature = useSignatureStore.getState().signatures.find((candidate) => candidate.id === signatureId) ?? null;
+    updateDraft('body', applySignatureHtml(draft.body, signature?.body ?? null));
+    setActiveSignatureId(signature?.id ?? null);
   };
 
   return (
@@ -160,8 +178,39 @@ export const Composer = ({
           )
         }
       />
+      {isSignaturePanelOpen ? (
+        <ComposerSignaturePanel
+          activeSignatureId={activeSignatureId}
+          signatures={signatures}
+          onApplySignature={applySignature}
+          onCreateSignature={() => {
+            const signatureId = createSignature({
+              accountId: null,
+              body: '<p>Best,<br />Your name</p>',
+              title: `Signature ${signatures.length + 1}`
+            });
+            applySignature(signatureId);
+          }}
+          onDeleteSignature={(signatureId) => {
+            deleteSignature(signatureId);
+            if (activeSignatureId === signatureId) {
+              applySignature(null);
+            }
+          }}
+          onSetDefault={setDefaultSignature}
+          onToggleOpen={() => setIsSignaturePanelOpen(false)}
+          onUpdateSignature={(signatureId, nextSignature) => {
+            updateSignature(signatureId, nextSignature);
+
+            if (activeSignatureId === signatureId && nextSignature.body !== undefined) {
+              updateDraft('body', applySignatureHtml(draft.body, nextSignature.body));
+            }
+          }}
+        />
+      ) : null}
       <ComposerFooter
         isSending={isSending}
+        onEditSignature={() => setIsSignaturePanelOpen((current) => !current)}
         onDiscard={handleClose}
         onFlushOutbox={onFlushOutbox}
         onSend={handleSend}

@@ -244,6 +244,8 @@ textarea {
 }
 
 .composer-field-row input,
+.composer-field-row select,
+.composer-field-row textarea,
 .composer-editor-field textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -360,6 +362,12 @@ textarea {
   padding: 0 12px;
 }
 
+.composer-field-row select,
+.composer-field-row textarea {
+  min-height: 42px;
+  padding: 10px 12px;
+}
+
 .composer-editor-field textarea {
   min-height: 220px;
   padding: 12px;
@@ -367,6 +375,8 @@ textarea {
 }
 
 .composer-field-row input:focus,
+.composer-field-row select:focus,
+.composer-field-row textarea:focus,
 .composer-editor-field textarea:focus {
   border-color: rgba(246, 182, 111, 0.42);
   box-shadow: 0 0 0 4px rgba(246, 182, 111, 0.08);
@@ -514,7 +524,7 @@ textarea {
 
 .composer-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -542,6 +552,40 @@ textarea {
 .composer-button-spinner {
   width: 14px;
   height: 14px;
+}
+
+.composer-signature-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.composer-signature-header,
+.composer-signature-footer,
+.composer-signature-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.composer-signature-actions,
+.composer-signature-footer {
+  justify-content: flex-start;
+}
+
+.composer-signature-actions button,
+.composer-signature-footer button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  cursor: pointer;
 }
 
 .composer-secondary,
