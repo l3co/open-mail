@@ -7,6 +7,7 @@ export type DraftRecord = {
   bcc: string[];
   body: string;
   cc: string[];
+  fromAccountId: string;
   inReplyTo: string | null;
   references: string[];
   subject: string;

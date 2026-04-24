@@ -87,6 +87,7 @@ const draft = (id: string): DraftRecord => ({
   bcc: [],
   body: 'Hello',
   cc: [],
+  fromAccountId: 'acc_1',
   inReplyTo: null,
   references: [],
   subject: id,

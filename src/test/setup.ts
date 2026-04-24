@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { beforeEach } from 'vitest';
+import { useAccountStore } from '@stores/useAccountStore';
 import { defaultShortcutBindings, useShortcutStore } from '@stores/useShortcutStore';
 import { useDraftStore } from '@stores/useDraftStore';
 import { useSignatureStore } from '@stores/useSignatureStore';
@@ -34,6 +35,10 @@ beforeEach(() => {
   });
   useShortcutStore.setState({
     bindings: defaultShortcutBindings
+  });
+  useAccountStore.setState({
+    accounts: [],
+    selectedAccountId: null
   });
   useDraftStore.setState({
     drafts: [],

@@ -11,6 +11,7 @@ import { type KeyboardShortcutMap, useKeyboardShortcuts } from '@hooks/useKeyboa
 import { prepareForwardDraft, prepareReplyDraft } from '@lib/compose-utils';
 import type { AttachmentRecord, FolderRecord, MessageRecord, SyncStatusDetail, ThreadSummary } from '@lib/contracts';
 import { applySignatureHtml } from '@lib/signature-utils';
+import type { AccountRecord } from '@stores/useAccountStore';
 import { resolveSignatureForAccount, useSignatureStore } from '@stores/useSignatureStore';
 import { useDraftStore } from '@stores/useDraftStore';
 import type { StoreThreadAction } from '@stores/useThreadStore';
@@ -33,6 +34,8 @@ type ShellFrameProps = {
   syncStatusDetail: SyncStatusDetail | null;
   outboxStatus: string;
   composerToast: { kind: 'success' | 'error'; message: string } | null;
+  composerAccounts: AccountRecord[];
+  composerAccountId: string;
   recipientSuggestions: string[];
   isOutboxBusy: boolean;
   isMessagesLoading: boolean;
@@ -67,6 +70,8 @@ export const ShellFrame = ({
   syncStatusDetail,
   outboxStatus,
   composerToast,
+  composerAccounts,
+  composerAccountId,
   recipientSuggestions,
   isOutboxBusy,
   isMessagesLoading,
@@ -116,7 +121,7 @@ export const ShellFrame = ({
   const removeDraft = useDraftStore((state) => state.removeDraft);
   const selectDraft = useDraftStore((state) => state.selectDraft);
   const activeFolder = folders.find((folder) => folder.id === activeFolderId) ?? null;
-  const accountId = folders[0]?.account_id ?? 'acc_demo';
+  const accountId = composerAccountId;
   const defaultSignature = useMemo(
     () => resolveSignatureForAccount(signatures, defaultSignatureId, accountId),
     [accountId, defaultSignatureId, signatures]
@@ -159,10 +164,11 @@ export const ShellFrame = ({
   const handleAutoSaveDraft = useCallback((draftId: string, draft: ComposerDraft) => {
     editDraft({
       id: draftId,
-      accountId,
+      accountId: draft.fromAccountId,
       bcc: draft.bcc,
       body: draft.body,
       cc: draft.cc,
+      fromAccountId: draft.fromAccountId,
       inReplyTo: draft.inReplyTo,
       references: draft.references,
       subject: draft.subject,
@@ -170,7 +176,7 @@ export const ShellFrame = ({
       updatedAt: new Date().toISOString()
     });
     setShortcutStatusLabel('Draft saved locally');
-  }, [accountId, editDraft]);
+  }, [editDraft]);
   useDraftAutoSave(composerDraftId, composerLiveDraft, isComposerOpen, handleAutoSaveDraft);
 
   const activeMessage = useMemo(() => {
@@ -197,6 +203,7 @@ export const ShellFrame = ({
         bcc: activeSavedDraft.bcc,
         body: activeSavedDraft.body,
         cc: activeSavedDraft.cc,
+        fromAccountId: activeSavedDraft.fromAccountId,
         inReplyTo: activeSavedDraft.inReplyTo,
         references: activeSavedDraft.references,
         subject: activeSavedDraft.subject,
@@ -210,10 +217,20 @@ export const ShellFrame = ({
     const nextDraftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     selectDraft(nextDraftId);
     setComposerDraftId(nextDraftId);
-    setComposerInitialDraft(draft ?? { body: applySignatureHtml('', defaultSignature?.body ?? null) });
+    setComposerInitialDraft(
+      draft
+        ? {
+            fromAccountId: composerAccountId,
+            ...draft
+          }
+        : {
+            body: applySignatureHtml('', defaultSignature?.body ?? null),
+            fromAccountId: composerAccountId
+          }
+    );
     setComposerLiveDraft(null);
     setIsComposerOpen(true);
-  }, [activeSavedDraft, defaultSignature?.body, selectDraft, setSidebarCollapsed]);
+  }, [activeSavedDraft, composerAccountId, defaultSignature?.body, selectDraft, setSidebarCollapsed]);
   const toggleComposer = () => {
     if (isComposerOpen) {
       resetComposerState();
@@ -449,7 +466,7 @@ export const ShellFrame = ({
 
         {isComposerOpen ? (
           <Composer
-            from="leco@example.com"
+            fromOptions={composerAccounts}
             initialDraft={composerInitialDraft}
             isSending={isOutboxBusy}
             recipientSuggestions={recipientSuggestions}

@@ -1,9 +1,10 @@
 import { ParticipantField } from '@components/composer/ParticipantField';
+import type { AccountRecord } from '@stores/useAccountStore';
 
 type ComposerHeaderProps = {
   bcc: string[];
   cc: string[];
-  from: string;
+  fromOptions: AccountRecord[];
   isCcVisible: boolean;
   isSending: boolean;
   isBccVisible: boolean;
@@ -11,10 +12,12 @@ type ComposerHeaderProps = {
   onBccChange: (value: string[]) => void;
   onCcChange: (value: string[]) => void;
   onClose: () => void;
+  onFromChange: (value: string) => void;
   onSubjectChange: (value: string) => void;
   onToChange: (value: string[]) => void;
   onToggleBcc: () => void;
   onToggleCc: () => void;
+  selectedFromAccountId: string;
   subject: string;
   to: string[];
 };
@@ -22,7 +25,7 @@ type ComposerHeaderProps = {
 export const ComposerHeader = ({
   bcc,
   cc,
-  from,
+  fromOptions,
   isCcVisible,
   isSending,
   isBccVisible,
@@ -30,10 +33,12 @@ export const ComposerHeader = ({
   onBccChange,
   onCcChange,
   onClose,
+  onFromChange,
   onSubjectChange,
   onToChange,
   onToggleBcc,
   onToggleCc,
+  selectedFromAccountId,
   subject,
   to
 }: ComposerHeaderProps) => (
@@ -57,7 +62,27 @@ export const ComposerHeader = ({
     <div className="composer-fields">
       <label className="composer-field-row">
         <span>From</span>
-        <input disabled readOnly value={from} />
+        {fromOptions.length > 1 ? (
+          <select
+            aria-label="From"
+            disabled={isSending}
+            onChange={(event) => onFromChange(event.target.value)}
+            value={selectedFromAccountId}
+          >
+            {fromOptions.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.displayName} &lt;{account.email}&gt;
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            aria-label="From"
+            disabled
+            readOnly
+            value={fromOptions[0] ? `${fromOptions[0].displayName} <${fromOptions[0].email}>` : ''}
+          />
+        )}
       </label>
 
       <ParticipantField

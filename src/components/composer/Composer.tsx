@@ -6,6 +6,7 @@ import { ComposerHeader } from '@components/composer/ComposerHeader';
 import { ComposerSignaturePanel } from '@components/composer/ComposerSignaturePanel';
 import { toComposerFileAttachment, type ComposerAttachment } from '@lib/composer-attachments';
 import { applySignatureHtml, hasSignatureHtml } from '@lib/signature-utils';
+import type { AccountRecord } from '@stores/useAccountStore';
 import { useSignatureStore } from '@stores/useSignatureStore';
 
 type ComposerDraft = {
@@ -13,6 +14,7 @@ type ComposerDraft = {
   bcc: string[];
   body: string;
   cc: string[];
+  fromAccountId: string;
   inReplyTo: string | null;
   references: string[];
   subject: string;
@@ -20,7 +22,8 @@ type ComposerDraft = {
 };
 
 type ComposerProps = {
-  from: string;
+  from?: string;
+  fromOptions?: AccountRecord[];
   initialDraft?: Partial<ComposerDraft>;
   isSending: boolean;
   recipientSuggestions: string[];
@@ -37,6 +40,7 @@ const defaultDraft: ComposerDraft = {
   bcc: [],
   body: '<p>Open Mail phase 5 composer is ready for the next review.</p>',
   cc: [],
+  fromAccountId: 'acc_demo',
   inReplyTo: null,
   references: [],
   subject: 'Desktop alpha update',
@@ -47,6 +51,7 @@ const hasQuotedContent = (body: string) => /class="(?:gmail_quote|forward_quote)
 
 export const Composer = ({
   from,
+  fromOptions,
   initialDraft,
   isSending,
   recipientSuggestions,
@@ -77,6 +82,16 @@ export const Composer = ({
   const deleteSignature = useSignatureStore((state) => state.delete);
   const setDefaultSignature = useSignatureStore((state) => state.setDefault);
   const updateSignature = useSignatureStore((state) => state.update);
+  const resolvedFromOptions = fromOptions?.length
+    ? fromOptions
+    : [
+        {
+          id: mergedDraft.fromAccountId,
+          provider: 'Gmail' as const,
+          email: from ?? 'leco@example.com',
+          displayName: 'Open Mail'
+        }
+      ];
 
   useEffect(() => {
     setDraft(mergedDraft);
@@ -87,12 +102,15 @@ export const Composer = ({
   }, [defaultSignatureId, mergedDraft]);
 
   const hasQuotedSection = hasQuotedContent(draft.body);
+  const activeFromAccount =
+    resolvedFromOptions.find((account) => account.id === draft.fromAccountId) ?? resolvedFromOptions[0] ?? null;
 
   const isDirty =
     draft.attachments.length !== mergedDraft.attachments.length ||
     draft.to.join(',') !== mergedDraft.to.join(',') ||
     draft.cc.join(',') !== mergedDraft.cc.join(',') ||
     draft.bcc.join(',') !== mergedDraft.bcc.join(',') ||
+    draft.fromAccountId !== mergedDraft.fromAccountId ||
     draft.subject !== mergedDraft.subject ||
     draft.body !== mergedDraft.body;
 
@@ -105,7 +123,7 @@ export const Composer = ({
 
   useEffect(() => {
     setLocalStatus(null);
-  }, [draft.attachments, draft.bcc, draft.body, draft.cc, draft.subject, draft.to]);
+  }, [draft.attachments, draft.bcc, draft.body, draft.cc, draft.fromAccountId, draft.subject, draft.to]);
 
   useEffect(() => {
     onDraftChange?.(draft);
@@ -158,7 +176,7 @@ export const Composer = ({
       <ComposerHeader
         bcc={draft.bcc}
         cc={draft.cc}
-        from={from}
+        fromOptions={resolvedFromOptions}
         isBccVisible={isBccVisible}
         isCcVisible={isCcVisible}
         isSending={isSending}
@@ -166,10 +184,12 @@ export const Composer = ({
         onBccChange={(value) => updateDraft('bcc', value)}
         onCcChange={(value) => updateDraft('cc', value)}
         onClose={handleClose}
+        onFromChange={(value) => updateDraft('fromAccountId', value)}
         onSubjectChange={(value) => updateDraft('subject', value)}
         onToChange={(value) => updateDraft('to', value)}
         onToggleBcc={() => setIsBccVisible((current) => !current)}
         onToggleCc={() => setIsCcVisible((current) => !current)}
+        selectedFromAccountId={activeFromAccount?.id ?? draft.fromAccountId}
         subject={draft.subject}
         to={draft.to}
       />

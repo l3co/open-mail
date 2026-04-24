@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from '@/App';
+import { useAccountStore } from '@stores/useAccountStore';
 import { useShortcutStore } from '@stores/useShortcutStore';
 
 describe('mailbox overview integration', () => {
@@ -122,6 +123,42 @@ describe('mailbox overview integration', () => {
 
     fireEvent.keyDown(window, { key: 'k' });
     expect(await screen.findByRole('heading', { name: 'Premium motion system approved' })).toBeInTheDocument();
+  });
+
+  it('shows a From selector in the composer when multiple accounts are available', async () => {
+    useAccountStore.setState({
+      accounts: [
+        {
+          id: 'acc_demo',
+          provider: 'Gmail',
+          email: 'leco@example.com',
+          displayName: 'Open Mail Demo'
+        },
+        {
+          id: 'acc_ops',
+          provider: 'Outlook',
+          email: 'ops@example.com',
+          displayName: 'Operations'
+        }
+      ],
+      selectedAccountId: 'acc_demo'
+    });
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /new message/i }));
+
+    const fromSelect = await screen.findByRole('combobox', { name: 'From' });
+    expect(fromSelect).toHaveValue('acc_demo');
+
+    fireEvent.change(fromSelect, { target: { value: 'acc_ops' } });
+
+    expect(fromSelect).toHaveValue('acc_ops');
+    expect(screen.getByRole('option', { name: 'Operations <ops@example.com>' })).toBeInTheDocument();
   });
 
   it('supports phase 3 thread action shortcuts with status feedback', async () => {

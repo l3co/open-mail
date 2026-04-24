@@ -18,6 +18,7 @@ import { autoMarkVisibleMessagesRead } from '@lib/auto-mark-read';
 import type { AttachmentRecord, EnqueueOutboxMessageRequest, OutboxMessage, OutboxSendReport } from '@lib/contracts';
 import { applyTheme } from '@lib/themes';
 import { api, tauriRuntime } from '@lib/tauri-bridge';
+import { useAccountStore } from '@stores/useAccountStore';
 import { type StoreThreadAction, useThreadStore } from '@stores/useThreadStore';
 import { useUndoStore } from '@stores/useUndoStore';
 import { useUIStore } from '@stores/useUIStore';
@@ -151,6 +152,9 @@ const MailShell = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [outboxStatus, setOutboxStatus] = useState('Composer ready');
   const [composerToast, setComposerToast] = useState<ComposerToast | null>(null);
+  const accounts = useAccountStore((state) => state.accounts);
+  const selectedAccountId = useAccountStore((state) => state.selectedAccountId);
+  const upsertAccount = useAccountStore((state) => state.upsertAccount);
   const applyThreadAction = useThreadStore((state) => state.applyThreadAction);
   const applyThreadLabels = useThreadStore((state) => state.applyThreadLabels);
   const createThreadSnapshot = useThreadStore((state) => state.createThreadSnapshot);
@@ -194,14 +198,39 @@ const MailShell = () => {
     () => Array.from(new Set((mailbox?.allThreads ?? []).flatMap((thread) => thread.participant_ids))).sort(),
     [mailbox?.allThreads]
   );
+  const fallbackComposerAccount = useMemo(
+    () => ({
+      id: mailbox?.accountId ?? 'acc_demo',
+      provider: 'Gmail' as const,
+      email: 'leco@example.com',
+      displayName: 'Open Mail Demo'
+    }),
+    [mailbox?.accountId]
+  );
+  const composerAccounts = accounts.length ? accounts : [fallbackComposerAccount];
+  const selectedComposerAccount = composerAccounts.find((account) => account.id === selectedAccountId) ?? composerAccounts[0];
   const messagesQuery = useThreadMessages(selectedThread?.id ?? null);
   const syncStatusDetailQuery = useSyncStatusDetail(mailbox?.accountId ?? null);
+
+  useEffect(() => {
+    if (!mailbox?.accountId) {
+      return;
+    }
+
+    upsertAccount({
+      id: mailbox.accountId,
+      provider: 'Gmail',
+      email: 'leco@example.com',
+      displayName: 'Open Mail Demo'
+    });
+  }, [mailbox?.accountId, upsertAccount]);
   const enqueueOutboxMutation = useMutation({
     mutationFn: async (draft: ComposerDraft): Promise<OutboxMessage> => {
-      const accountId = mailbox?.accountId ?? 'acc_demo';
+      const accountId = draft.fromAccountId || selectedComposerAccount.id;
+      const fromAccount = composerAccounts.find((account) => account.id === accountId) ?? selectedComposerAccount;
       const request: EnqueueOutboxMessageRequest = {
         accountId,
-        from: { name: 'Open Mail', email: 'leco@example.com' },
+        from: { name: fromAccount.displayName, email: fromAccount.email },
         to: toMailAddresses(draft.to),
         cc: toMailAddresses(draft.cc),
         bcc: toMailAddresses(draft.bcc),
@@ -451,6 +480,8 @@ const MailShell = () => {
       syncStatusDetail={syncStatusDetailQuery.data ?? null}
       outboxStatus={outboxStatus}
       composerToast={composerToast}
+      composerAccounts={composerAccounts}
+      composerAccountId={selectedComposerAccount.id}
       recipientSuggestions={recipientSuggestions}
       isOutboxBusy={enqueueOutboxMutation.isPending || flushOutboxMutation.isPending}
       isMessagesLoading={
