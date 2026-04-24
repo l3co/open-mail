@@ -53,7 +53,8 @@ beforeEach(() => {
         accountId: null
       }
     ],
-    defaultSignatureId: 'sig_default'
+    defaultSignatureId: 'sig_default',
+    defaultSignatureIdsByAccountId: {}
   });
   useThreadStore.setState({
     activeFolderKey: null,

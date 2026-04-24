@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from '@/App';
 import { useAccountStore } from '@stores/useAccountStore';
 import { useShortcutStore } from '@stores/useShortcutStore';
+import { useSignatureStore } from '@stores/useSignatureStore';
 
 describe('mailbox overview integration', () => {
   afterEach(() => {
@@ -159,6 +160,68 @@ describe('mailbox overview integration', () => {
 
     expect(fromSelect).toHaveValue('acc_ops');
     expect(screen.getByRole('option', { name: 'Operations <ops@example.com>' })).toBeInTheDocument();
+  });
+
+  it('switches to the default signature of the selected account for a new draft', async () => {
+    useAccountStore.setState({
+      accounts: [
+        {
+          id: 'acc_demo',
+          provider: 'Gmail',
+          email: 'leco@example.com',
+          displayName: 'Open Mail Demo'
+        },
+        {
+          id: 'acc_ops',
+          provider: 'Outlook',
+          email: 'ops@example.com',
+          displayName: 'Operations'
+        }
+      ],
+      selectedAccountId: 'acc_demo'
+    });
+    useSignatureStore.setState({
+      signatures: [
+        {
+          id: 'sig_default',
+          title: 'Default signature',
+          body: '<p>Best,<br />Leco</p>',
+          accountId: null
+        },
+        {
+          id: 'sig_ops',
+          title: 'Operations signature',
+          body: '<p>Thanks,<br />Operations</p>',
+          accountId: 'acc_ops'
+        }
+      ],
+      defaultSignatureId: 'sig_default',
+      defaultSignatureIdsByAccountId: {
+        acc_ops: 'sig_ops'
+      }
+    });
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /new message/i }));
+
+    const fromSelect = await screen.findByRole('combobox', { name: 'From' });
+    const message = screen.getByRole('textbox', { name: 'Message' });
+
+    expect(message).toHaveTextContent('Best,');
+    expect(message).toHaveTextContent('Leco');
+
+    fireEvent.change(fromSelect, { target: { value: 'acc_ops' } });
+
+    await waitFor(() => {
+      expect(message).toHaveTextContent('Thanks,');
+      expect(message).toHaveTextContent('Operations');
+    });
+    expect(message).not.toHaveTextContent('Best,');
   });
 
   it('supports phase 3 thread action shortcuts with status feedback', async () => {

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ComposerEditor } from '@components/composer/ComposerEditor';
 
@@ -26,5 +26,15 @@ describe('ComposerEditor', () => {
     expect(screen.getByRole('button', { name: 'Bold' })).toHaveAttribute('title', 'Bold (Cmd+B)');
     expect(screen.getByRole('button', { name: 'Italic' })).toHaveAttribute('title', 'Italic (Cmd+I)');
     expect(screen.getByRole('button', { name: 'Underline' })).toHaveAttribute('title', 'Underline (Cmd+U)');
+  });
+
+  it('syncs external body updates into the TipTap editor', async () => {
+    const { rerender } = render(<ComposerEditor body="<p>Hello team</p>" onBodyChange={vi.fn()} />);
+
+    rerender(<ComposerEditor body="<p>Updated body</p>" onBodyChange={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'Message' })).toHaveTextContent('Updated body');
+    });
   });
 });

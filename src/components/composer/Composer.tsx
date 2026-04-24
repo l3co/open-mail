@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ComposerAttachments } from '@components/composer/ComposerAttachments';
 import { ComposerEditor } from '@components/composer/ComposerEditor';
 import { ComposerFooter } from '@components/composer/ComposerFooter';
 import { ComposerHeader } from '@components/composer/ComposerHeader';
 import { ComposerSignaturePanel } from '@components/composer/ComposerSignaturePanel';
 import { toComposerFileAttachment, type ComposerAttachment } from '@lib/composer-attachments';
-import { applySignatureHtml, hasSignatureHtml } from '@lib/signature-utils';
+import { applySignatureHtml, hasSignatureHtml, stripSignatureHtml } from '@lib/signature-utils';
 import type { AccountRecord } from '@stores/useAccountStore';
-import { useSignatureStore } from '@stores/useSignatureStore';
+import { resolveSignatureForAccount, useSignatureStore } from '@stores/useSignatureStore';
 
 type ComposerDraft = {
   attachments: ComposerAttachment[];
@@ -48,6 +48,14 @@ const defaultDraft: ComposerDraft = {
 };
 
 const hasQuotedContent = (body: string) => /class="(?:gmail_quote|forward_quote)"/.test(body);
+const getHtmlTextContent = (body: string) =>
+  body
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 export const Composer = ({
   from,
@@ -78,10 +86,12 @@ export const Composer = ({
   const [localStatus, setLocalStatus] = useState<string | null>(null);
   const signatures = useSignatureStore((state) => state.signatures);
   const defaultSignatureId = useSignatureStore((state) => state.defaultSignatureId);
+  const defaultSignatureIdsByAccountId = useSignatureStore((state) => state.defaultSignatureIdsByAccountId);
   const createSignature = useSignatureStore((state) => state.create);
   const deleteSignature = useSignatureStore((state) => state.delete);
   const setDefaultSignature = useSignatureStore((state) => state.setDefault);
   const updateSignature = useSignatureStore((state) => state.update);
+  const previousFromAccountIdRef = useRef(mergedDraft.fromAccountId);
   const resolvedFromOptions = fromOptions?.length
     ? fromOptions
     : [
@@ -92,14 +102,33 @@ export const Composer = ({
           displayName: 'Open Mail'
         }
       ];
+  const resolvedDefaultSignature = useMemo(
+    () =>
+      resolveSignatureForAccount(
+        signatures,
+        defaultSignatureId,
+        defaultSignatureIdsByAccountId,
+        draft.fromAccountId
+      ),
+    [defaultSignatureId, defaultSignatureIdsByAccountId, draft.fromAccountId, signatures]
+  );
 
   useEffect(() => {
     setDraft(mergedDraft);
     setIsCcVisible(Boolean(mergedDraft.cc.length));
     setIsBccVisible(Boolean(mergedDraft.bcc.length));
-    setActiveSignatureId(hasSignatureHtml(mergedDraft.body) ? defaultSignatureId : null);
+    const initialSignature = hasSignatureHtml(mergedDraft.body)
+      ? resolveSignatureForAccount(
+          signatures,
+          defaultSignatureId,
+          defaultSignatureIdsByAccountId,
+          mergedDraft.fromAccountId
+        )
+      : null;
+    setActiveSignatureId(initialSignature?.id ?? null);
     setIsQuotedTextCollapsed(hasQuotedContent(mergedDraft.body));
-  }, [defaultSignatureId, mergedDraft]);
+    previousFromAccountIdRef.current = mergedDraft.fromAccountId;
+  }, [defaultSignatureId, defaultSignatureIdsByAccountId, mergedDraft, signatures]);
 
   const hasQuotedSection = hasQuotedContent(draft.body);
   const activeFromAccount =
@@ -128,6 +157,44 @@ export const Composer = ({
   useEffect(() => {
     onDraftChange?.(draft);
   }, [draft, onDraftChange]);
+
+  useEffect(() => {
+    if (draft.fromAccountId === previousFromAccountIdRef.current) {
+      return;
+    }
+
+    const previousFromAccountId = previousFromAccountIdRef.current;
+    previousFromAccountIdRef.current = draft.fromAccountId;
+    const previousDefaultSignature = resolveSignatureForAccount(
+      signatures,
+      defaultSignatureId,
+      defaultSignatureIdsByAccountId,
+      previousFromAccountId
+    );
+
+    const contentWithoutSignature = getHtmlTextContent(stripSignatureHtml(draft.body));
+    const bodyText = getHtmlTextContent(draft.body);
+    const previousSignatureText = getHtmlTextContent(previousDefaultSignature?.body ?? '');
+    const nextSignatureText = getHtmlTextContent(resolvedDefaultSignature?.body ?? '');
+    const isSignatureOnlyBody =
+      !contentWithoutSignature ||
+      bodyText === previousSignatureText ||
+      bodyText === nextSignatureText;
+
+    if (!isSignatureOnlyBody) {
+      return;
+    }
+
+    updateDraft('body', applySignatureHtml(draft.body, resolvedDefaultSignature?.body ?? null));
+    setActiveSignatureId(resolvedDefaultSignature?.id ?? null);
+  }, [
+    defaultSignatureId,
+    defaultSignatureIdsByAccountId,
+    draft.body,
+    draft.fromAccountId,
+    resolvedDefaultSignature,
+    signatures
+  ]);
 
   const handleClose = () => {
     onClose();
@@ -230,7 +297,7 @@ export const Composer = ({
           onApplySignature={applySignature}
           onCreateSignature={() => {
             const signatureId = createSignature({
-              accountId: null,
+              accountId: draft.fromAccountId,
               body: '<p>Best,<br />Your name</p>',
               title: `Signature ${signatures.length + 1}`
             });
@@ -242,7 +309,7 @@ export const Composer = ({
               applySignature(null);
             }
           }}
-          onSetDefault={setDefaultSignature}
+          onSetDefault={(signatureId) => setDefaultSignature(signatureId, draft.fromAccountId)}
           onToggleOpen={() => setIsSignaturePanelOpen(false)}
           onUpdateSignature={(signatureId, nextSignature) => {
             updateSignature(signatureId, nextSignature);

@@ -11,17 +11,26 @@ export type Signature = {
 type SignatureState = {
   signatures: Signature[];
   defaultSignatureId: string | null;
+  defaultSignatureIdsByAccountId: Record<string, string | null>;
   create: (signature: Omit<Signature, 'id'>) => string;
   update: (id: string, signature: Partial<Omit<Signature, 'id'>>) => void;
   delete: (id: string) => void;
-  setDefault: (id: string | null) => void;
+  setDefault: (id: string | null, accountId?: string | null) => void;
 };
 
 export const resolveSignatureForAccount = (
   signatures: Signature[],
   defaultSignatureId: string | null,
+  defaultSignatureIdsByAccountId: Record<string, string | null>,
   accountId: string
 ) => {
+  const accountDefaultId = defaultSignatureIdsByAccountId[accountId] ?? null;
+  const accountDefaultSignature = signatures.find((signature) => signature.id === accountDefaultId) ?? null;
+
+  if (accountDefaultSignature?.accountId === accountId) {
+    return accountDefaultSignature;
+  }
+
   const defaultSignature = signatures.find((signature) => signature.id === defaultSignatureId) ?? null;
 
   if (defaultSignature?.accountId === null || defaultSignature?.accountId === accountId) {
@@ -43,6 +52,7 @@ export const useSignatureStore = create<SignatureState>()(
     (set) => ({
       signatures: [defaultSignature],
       defaultSignatureId: defaultSignature.id,
+      defaultSignatureIdsByAccountId: {},
       create: (signature) => {
         const id = `sig_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         set((state) => ({
@@ -59,13 +69,32 @@ export const useSignatureStore = create<SignatureState>()(
       delete: (id) =>
         set((state) => {
           const signatures = state.signatures.filter((signature) => signature.id !== id);
+          const defaultSignatureIdsByAccountId = Object.fromEntries(
+            Object.entries(state.defaultSignatureIdsByAccountId).map(([accountId, signatureId]) => [
+              accountId,
+              signatureId === id ? null : signatureId
+            ])
+          );
           return {
             signatures,
             defaultSignatureId:
-              state.defaultSignatureId === id ? signatures[0]?.id ?? null : state.defaultSignatureId
+              state.defaultSignatureId === id ? signatures[0]?.id ?? null : state.defaultSignatureId,
+            defaultSignatureIdsByAccountId
           };
         }),
-      setDefault: (defaultSignatureId) => set({ defaultSignatureId })
+      setDefault: (signatureId, accountId) =>
+        set((state) =>
+          accountId
+            ? {
+                defaultSignatureIdsByAccountId: {
+                  ...state.defaultSignatureIdsByAccountId,
+                  [accountId]: signatureId
+                }
+              }
+            : {
+                defaultSignatureId: signatureId
+              }
+        )
     }),
     {
       name: 'open-mail-signatures'

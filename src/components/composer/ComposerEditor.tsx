@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import Placeholder from '@tiptap/extension-placeholder';
 import StarterKit from '@tiptap/starter-kit';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -45,6 +46,21 @@ export const ComposerEditor = ({ body, onBodyChange }: ComposerEditorProps) => {
       onBodyChange(currentEditor.getHTML());
     }
   });
+
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    const nextHtml = toInitialHtml(body);
+    if (editor.getHTML() === nextHtml) {
+      return;
+    }
+
+    editor.commands.setContent(nextHtml, {
+      emitUpdate: false
+    });
+  }, [body, editor]);
 
   return (
     <div className="composer-editor-shell">

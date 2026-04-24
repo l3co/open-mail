@@ -4,7 +4,7 @@ import { useDraftStore, type DraftRecord } from '@stores/useDraftStore';
 import { useFolderStore } from '@stores/useFolderStore';
 import { useMessageStore } from '@stores/useMessageStore';
 import { useSearchStore } from '@stores/useSearchStore';
-import { useSignatureStore } from '@stores/useSignatureStore';
+import { resolveSignatureForAccount, useSignatureStore } from '@stores/useSignatureStore';
 import { useSyncStore } from '@stores/useSyncStore';
 import { useThreadStore } from '@stores/useThreadStore';
 import type { FolderRecord, MessageRecord, SyncStatusDetail, ThreadRecord, ThreadSummary } from '@lib/contracts';
@@ -136,7 +136,8 @@ describe('phase 3 domain stores', () => {
           accountId: null
         }
       ],
-      defaultSignatureId: 'sig_default'
+      defaultSignatureId: 'sig_default',
+      defaultSignatureIdsByAccountId: {}
     });
     useSyncStore.setState({ syncByAccountId: {}, lastEventState: { kind: 'not-started' } });
     useSearchStore.setState({ query: '', results: [], isSearching: false });
@@ -308,17 +309,26 @@ describe('phase 3 domain stores', () => {
     });
 
     useSignatureStore.getState().update(createdId, { title: 'Updated signature' });
-    useSignatureStore.getState().setDefault(createdId);
+    useSignatureStore.getState().setDefault(createdId, 'acc_1');
 
-    expect(useSignatureStore.getState().defaultSignatureId).toBe(createdId);
+    expect(useSignatureStore.getState().defaultSignatureIdsByAccountId.acc_1).toBe(createdId);
     expect(useSignatureStore.getState().signatures.find((signature) => signature.id === createdId)?.title).toBe(
       'Updated signature'
     );
+    expect(
+      resolveSignatureForAccount(
+        useSignatureStore.getState().signatures,
+        useSignatureStore.getState().defaultSignatureId,
+        useSignatureStore.getState().defaultSignatureIdsByAccountId,
+        'acc_1'
+      )?.id
+    ).toBe(createdId);
 
     useSignatureStore.getState().delete(createdId);
 
     expect(useSignatureStore.getState().signatures.some((signature) => signature.id === createdId)).toBe(false);
     expect(useSignatureStore.getState().defaultSignatureId).toBe('sig_default');
+    expect(useSignatureStore.getState().defaultSignatureIdsByAccountId.acc_1).toBeNull();
   });
 
   it('tracks sync status by account and search results', () => {

@@ -115,6 +115,7 @@ export const ShellFrame = ({
   const setThreadPanelWidth = useUIStore((state) => state.setThreadPanelWidth);
   const signatures = useSignatureStore((state) => state.signatures);
   const defaultSignatureId = useSignatureStore((state) => state.defaultSignatureId);
+  const defaultSignatureIdsByAccountId = useSignatureStore((state) => state.defaultSignatureIdsByAccountId);
   const drafts = useDraftStore((state) => state.drafts);
   const activeDraftId = useDraftStore((state) => state.activeDraftId);
   const editDraft = useDraftStore((state) => state.editDraft);
@@ -123,8 +124,8 @@ export const ShellFrame = ({
   const activeFolder = folders.find((folder) => folder.id === activeFolderId) ?? null;
   const accountId = composerAccountId;
   const defaultSignature = useMemo(
-    () => resolveSignatureForAccount(signatures, defaultSignatureId, accountId),
-    [accountId, defaultSignatureId, signatures]
+    () => resolveSignatureForAccount(signatures, defaultSignatureId, defaultSignatureIdsByAccountId, accountId),
+    [accountId, defaultSignatureId, defaultSignatureIdsByAccountId, signatures]
   );
   const activeSavedDraft = useMemo(
     () => drafts.find((draft) => draft.id === activeDraftId) ?? null,
