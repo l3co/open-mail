@@ -24,7 +24,11 @@ export const ComposerEditor = ({ body, onBodyChange }: ComposerEditorProps) => {
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2]
+        }
+      }),
       Placeholder.configure({
         placeholder: 'Write your message...'
       })
