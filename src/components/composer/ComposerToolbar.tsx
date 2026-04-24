@@ -10,10 +10,16 @@ export const ComposerToolbar = ({ editor, onRequestLink }: ComposerToolbarProps)
     return null;
   }
 
+  const isListItemActive = editor.isActive('bulletList') || editor.isActive('orderedList');
+  const handleToolbarMouseDown = (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+  };
+
   return (
     <div className="composer-toolbar" aria-label="Composer toolbar">
       <button
         aria-pressed={editor.isActive('bold')}
+        onMouseDown={handleToolbarMouseDown}
         onClick={() => editor.chain().focus().toggleBold().run()}
         title="Bold (Cmd+B)"
         type="button"
@@ -22,6 +28,7 @@ export const ComposerToolbar = ({ editor, onRequestLink }: ComposerToolbarProps)
       </button>
       <button
         aria-pressed={editor.isActive('italic')}
+        onMouseDown={handleToolbarMouseDown}
         onClick={() => editor.chain().focus().toggleItalic().run()}
         title="Italic (Cmd+I)"
         type="button"
@@ -30,6 +37,7 @@ export const ComposerToolbar = ({ editor, onRequestLink }: ComposerToolbarProps)
       </button>
       <button
         aria-pressed={editor.isActive('underline')}
+        onMouseDown={handleToolbarMouseDown}
         onClick={() => editor.chain().focus().toggleUnderline().run()}
         title="Underline (Cmd+U)"
         type="button"
@@ -38,6 +46,7 @@ export const ComposerToolbar = ({ editor, onRequestLink }: ComposerToolbarProps)
       </button>
       <button
         aria-pressed={editor.isActive('strike')}
+        onMouseDown={handleToolbarMouseDown}
         onClick={() => editor.chain().focus().toggleStrike().run()}
         title="Strikethrough (Cmd+Shift+S)"
         type="button"
@@ -47,6 +56,7 @@ export const ComposerToolbar = ({ editor, onRequestLink }: ComposerToolbarProps)
       <span>|</span>
       <button
         aria-pressed={editor.isActive('heading', { level: 1 })}
+        onMouseDown={handleToolbarMouseDown}
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
         type="button"
       >
@@ -54,6 +64,7 @@ export const ComposerToolbar = ({ editor, onRequestLink }: ComposerToolbarProps)
       </button>
       <button
         aria-pressed={editor.isActive('heading', { level: 2 })}
+        onMouseDown={handleToolbarMouseDown}
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         type="button"
       >
@@ -61,6 +72,7 @@ export const ComposerToolbar = ({ editor, onRequestLink }: ComposerToolbarProps)
       </button>
       <button
         aria-pressed={editor.isActive('heading', { level: 3 })}
+        onMouseDown={handleToolbarMouseDown}
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         type="button"
       >
@@ -69,6 +81,7 @@ export const ComposerToolbar = ({ editor, onRequestLink }: ComposerToolbarProps)
       <span>|</span>
       <button
         aria-pressed={editor.isActive('bulletList')}
+        onMouseDown={handleToolbarMouseDown}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         title="Bullet list (Cmd+Shift+8)"
         type="button"
@@ -77,6 +90,7 @@ export const ComposerToolbar = ({ editor, onRequestLink }: ComposerToolbarProps)
       </button>
       <button
         aria-pressed={editor.isActive('orderedList')}
+        onMouseDown={handleToolbarMouseDown}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         title="Numbered list (Cmd+Shift+7)"
         type="button"
@@ -84,7 +98,26 @@ export const ComposerToolbar = ({ editor, onRequestLink }: ComposerToolbarProps)
         Numbers
       </button>
       <button
+        aria-disabled={!isListItemActive}
+        onMouseDown={handleToolbarMouseDown}
+        onClick={() => editor.chain().focus().sinkListItem('listItem').run()}
+        title="Indent list item (Tab)"
+        type="button"
+      >
+        Indent
+      </button>
+      <button
+        aria-disabled={!isListItemActive}
+        onMouseDown={handleToolbarMouseDown}
+        onClick={() => editor.chain().focus().liftListItem('listItem').run()}
+        title="Outdent list item (Shift+Tab)"
+        type="button"
+      >
+        Outdent
+      </button>
+      <button
         aria-pressed={editor.isActive('codeBlock')}
+        onMouseDown={handleToolbarMouseDown}
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         title="Code block (Cmd+Shift+E)"
         type="button"
@@ -94,6 +127,7 @@ export const ComposerToolbar = ({ editor, onRequestLink }: ComposerToolbarProps)
       <span>|</span>
       <button
         aria-pressed={editor.isActive('blockquote')}
+        onMouseDown={handleToolbarMouseDown}
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
         type="button"
       >
@@ -101,6 +135,7 @@ export const ComposerToolbar = ({ editor, onRequestLink }: ComposerToolbarProps)
       </button>
       <button
         aria-pressed={editor.isActive('link')}
+        onMouseDown={handleToolbarMouseDown}
         onClick={onRequestLink}
         title="Insert link (Cmd+K)"
         type="button"

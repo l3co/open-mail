@@ -3,6 +3,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import StarterKit from '@tiptap/starter-kit';
 import { EditorContent, useEditor } from '@tiptap/react';
 import { ComposerToolbar } from '@components/composer/ComposerToolbar';
+import { runComposerListIndentationShortcut } from '@lib/composer-editor-shortcuts';
 
 type ComposerEditorProps = {
   body: string;
@@ -94,6 +95,10 @@ export const ComposerEditor = ({ body, onBodyChange }: ComposerEditorProps) => {
         role: 'textbox'
       },
       handleKeyDown: (_view, event): boolean => {
+        if (runComposerListIndentationShortcut(event, editor ?? undefined)) {
+          return true;
+        }
+
         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
           event.preventDefault();
           return requestLink();

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ComposerEditor } from '@components/composer/ComposerEditor';
+import { runComposerListIndentationShortcut } from '@lib/composer-editor-shortcuts';
 
 if (!('getClientRects' in Text.prototype)) {
   Object.defineProperty(Text.prototype, 'getClientRects', {
@@ -16,11 +17,42 @@ if (!('getBoundingClientRect' in Text.prototype)) {
   });
 }
 
-const focusEditorText = (value: string) => {
+if (!('getClientRects' in HTMLElement.prototype)) {
+  Object.defineProperty(HTMLElement.prototype, 'getClientRects', {
+    configurable: true,
+    value: () => []
+  });
+}
+
+if (!('getBoundingClientRect' in HTMLElement.prototype)) {
+  Object.defineProperty(HTMLElement.prototype, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => new DOMRect()
+  });
+}
+
+if (!('getClientRects' in Range.prototype)) {
+  Object.defineProperty(Range.prototype, 'getClientRects', {
+    configurable: true,
+    value: () => []
+  });
+}
+
+if (!('getBoundingClientRect' in Range.prototype)) {
+  Object.defineProperty(Range.prototype, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => new DOMRect()
+  });
+}
+
+const focusEditorText = (value: string, collapseToStart = false) => {
   const editor = screen.getByRole('textbox', { name: 'Message' });
-  const textNode = Array.from(editor.childNodes)
-    .flatMap((node) => Array.from(node.childNodes))
-    .find((node) => node.textContent?.includes(value));
+  const textWalker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+  let textNode: Node | null = textWalker.nextNode();
+
+  while (textNode && !textNode.textContent?.includes(value)) {
+    textNode = textWalker.nextNode();
+  }
 
   if (!textNode?.textContent) {
     throw new Error(`Could not find text node containing "${value}"`);
@@ -29,7 +61,7 @@ const focusEditorText = (value: string) => {
   const startIndex = textNode.textContent.indexOf(value);
   const range = document.createRange();
   range.setStart(textNode, startIndex);
-  range.setEnd(textNode, startIndex + value.length);
+  range.setEnd(textNode, collapseToStart ? startIndex : startIndex + value.length);
 
   const selection = window.getSelection();
   selection?.removeAllRanges();
@@ -53,6 +85,8 @@ describe('ComposerEditor', () => {
     expect(screen.getByRole('button', { name: 'H3' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Bullets' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Numbers' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Indent' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Outdent' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Code' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Quote' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Link' })).toBeInTheDocument();
@@ -98,6 +132,49 @@ describe('ComposerEditor', () => {
     expect(screen.getByRole('button', { name: 'Strike' })).toHaveAttribute('title', 'Strikethrough (Cmd+Shift+S)');
     expect(screen.getByRole('button', { name: 'Numbers' })).toHaveAttribute('title', 'Numbered list (Cmd+Shift+7)');
     expect(screen.getByRole('button', { name: 'Bullets' })).toHaveAttribute('title', 'Bullet list (Cmd+Shift+8)');
+    expect(screen.getByRole('button', { name: 'Indent' })).toHaveAttribute('title', 'Indent list item (Tab)');
+    expect(screen.getByRole('button', { name: 'Outdent' })).toHaveAttribute('title', 'Outdent list item (Shift+Tab)');
     expect(screen.getByRole('button', { name: 'Code' })).toHaveAttribute('title', 'Code block (Cmd+Shift+E)');
+  });
+
+  it('routes Tab and Shift+Tab to nested list indentation commands', () => {
+    const preventDefault = vi.fn();
+    const sinkListItem = vi.fn(() => ({ run: () => true }));
+    const liftListItem = vi.fn(() => ({ run: () => true }));
+    const focus = vi.fn(() => ({
+      sinkListItem,
+      liftListItem
+    }));
+    const editor = {
+      isActive: vi.fn((name: string) => name === 'bulletList'),
+      chain: vi.fn(() => ({
+        focus
+      }))
+    } as never;
+
+    expect(
+      runComposerListIndentationShortcut(
+        {
+          key: 'Tab',
+          shiftKey: false,
+          preventDefault
+        } as unknown as KeyboardEvent,
+        editor
+      )
+    ).toBe(true);
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(sinkListItem).toHaveBeenCalledWith('listItem');
+
+    expect(
+      runComposerListIndentationShortcut(
+        {
+          key: 'Tab',
+          shiftKey: true,
+          preventDefault
+        } as unknown as KeyboardEvent,
+        editor
+      )
+    ).toBe(true);
+    expect(liftListItem).toHaveBeenCalledWith('listItem');
   });
 });
