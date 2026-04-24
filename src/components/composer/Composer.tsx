@@ -43,6 +43,8 @@ const defaultDraft: ComposerDraft = {
   to: ['team@example.com']
 };
 
+const hasQuotedContent = (body: string) => /class="(?:gmail_quote|forward_quote)"/.test(body);
+
 export const Composer = ({
   from,
   initialDraft,
@@ -67,6 +69,7 @@ export const Composer = ({
   const [isBccVisible, setIsBccVisible] = useState(Boolean(mergedDraft.bcc.length));
   const [isSignaturePanelOpen, setIsSignaturePanelOpen] = useState(false);
   const [activeSignatureId, setActiveSignatureId] = useState<string | null>(null);
+  const [isQuotedTextCollapsed, setIsQuotedTextCollapsed] = useState(hasQuotedContent(mergedDraft.body));
   const [localStatus, setLocalStatus] = useState<string | null>(null);
   const signatures = useSignatureStore((state) => state.signatures);
   const defaultSignatureId = useSignatureStore((state) => state.defaultSignatureId);
@@ -80,7 +83,10 @@ export const Composer = ({
     setIsCcVisible(Boolean(mergedDraft.cc.length));
     setIsBccVisible(Boolean(mergedDraft.bcc.length));
     setActiveSignatureId(hasSignatureHtml(mergedDraft.body) ? defaultSignatureId : null);
+    setIsQuotedTextCollapsed(hasQuotedContent(mergedDraft.body));
   }, [defaultSignatureId, mergedDraft]);
+
+  const hasQuotedSection = hasQuotedContent(draft.body);
 
   const isDirty =
     draft.attachments.length !== mergedDraft.attachments.length ||
@@ -167,7 +173,21 @@ export const Composer = ({
         subject={draft.subject}
         to={draft.to}
       />
-      <ComposerEditor body={draft.body} onBodyChange={(value) => updateDraft('body', value)} />
+      <div
+        className={hasQuotedSection && isQuotedTextCollapsed ? 'composer-quoted-shell composer-quoted-shell-collapsed' : 'composer-quoted-shell'}
+      >
+        {hasQuotedSection ? (
+          <button
+            aria-expanded={!isQuotedTextCollapsed}
+            className="composer-quoted-toggle"
+            onClick={() => setIsQuotedTextCollapsed((current) => !current)}
+            type="button"
+          >
+            {isQuotedTextCollapsed ? 'Show quoted text' : 'Hide quoted text'}
+          </button>
+        ) : null}
+        <ComposerEditor body={draft.body} onBodyChange={(value) => updateDraft('body', value)} />
+      </div>
       <ComposerAttachments
         attachments={draft.attachments}
         onAdd={(files) =>

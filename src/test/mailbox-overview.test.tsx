@@ -409,10 +409,14 @@ describe('mailbox overview integration', () => {
     expect(composer).toBeInTheDocument();
     expect(screen.getByLabelText(/^subject$/i)).toHaveValue('Re: Premium motion system approved');
     expect(within(composer).getByTitle('atlas@example.com')).toBeInTheDocument();
+    expect(within(composer).getByRole('button', { name: 'Show quoted text' })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('textbox', { name: 'Message' })).toHaveTextContent('On Mar 13, 2026');
     expect(screen.getByRole('textbox', { name: 'Message' })).toHaveTextContent(
       'Vamos fechar a base visual do composer e da thread list hoje.'
     );
+
+    fireEvent.click(within(composer).getByRole('button', { name: 'Show quoted text' }));
+    expect(within(composer).getByRole('button', { name: 'Hide quoted text' })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('opens a forward draft with forwarded content from the selected message', async () => {
@@ -432,6 +436,7 @@ describe('mailbox overview integration', () => {
     expect(screen.getByLabelText(/^subject$/i)).toHaveValue('Fwd: Premium motion system approved');
     expect(within(composer).queryByTitle('atlas@example.com')).not.toBeInTheDocument();
     expect(within(composer).getByText('motion-notes.pdf')).toBeInTheDocument();
+    expect(within(composer).getByRole('button', { name: 'Show quoted text' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Message' })).toHaveTextContent('Forwarded message');
     expect(screen.getByRole('textbox', { name: 'Message' })).toHaveTextContent('From: Atlas Design');
   });

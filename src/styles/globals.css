@@ -211,9 +211,26 @@ textarea {
 
 .composer-panel-header,
 .composer-panel-footer,
-.composer-editor-shell {
+.composer-editor-shell,
+.composer-quoted-shell {
   display: grid;
   gap: 14px;
+}
+
+.composer-quoted-toggle {
+  justify-self: start;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.composer-quoted-toggle:hover {
+  border-color: rgba(246, 182, 111, 0.28);
+  color: var(--accent);
 }
 
 .composer-panel-title-row {
@@ -462,6 +479,11 @@ textarea {
 
 .composer-rich-editor a {
   color: var(--accent);
+}
+
+.composer-quoted-shell-collapsed .composer-rich-editor .gmail_quote,
+.composer-quoted-shell-collapsed .composer-rich-editor .forward_quote {
+  display: none;
 }
 
 .composer-attachments {
