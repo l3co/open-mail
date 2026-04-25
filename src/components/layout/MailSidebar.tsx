@@ -11,10 +11,10 @@ import {
   Send,
   Settings,
   ShieldAlert,
-  Sparkles,
   Star,
   Trash2
 } from 'lucide-react';
+import openMailLogo from '@/assets/logo.svg';
 import type { FolderRecord } from '@lib/contracts';
 
 type MailSidebarProps = {
@@ -68,7 +68,7 @@ export const MailSidebar = ({
       <div className="sidebar-header">
         <div className="brand-lockup">
           <div className="brand-mark">
-            <Sparkles size={18} />
+            <img alt="" src={openMailLogo} />
           </div>
           {!isCollapsed ? (
             <div>

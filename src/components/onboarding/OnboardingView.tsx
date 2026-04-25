@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
-import { CheckCircle2, KeyRound, MailCheck, ServerCog, Sparkles } from 'lucide-react';
+import { CheckCircle2, KeyRound, MailCheck, ServerCog } from 'lucide-react';
+import openMailLogo from '@/assets/logo.svg';
 
 const setupSteps = [
   {
@@ -46,7 +47,7 @@ export const OnboardingView = () => (
       <div className="onboarding-panel" aria-label="Setup preview">
         <div className="onboarding-panel-header">
           <div className="brand-mark">
-            <Sparkles size={18} />
+            <img alt="" src={openMailLogo} />
           </div>
           <div>
             <span>Open Mail setup</span>

@@ -127,6 +127,13 @@ textarea {
   border-radius: 14px;
   background: linear-gradient(135deg, rgba(246, 182, 111, 0.24), rgba(132, 216, 199, 0.18));
   color: var(--accent);
+  overflow: hidden;
+}
+
+.brand-mark img {
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
 }
 
 .eyebrow {
