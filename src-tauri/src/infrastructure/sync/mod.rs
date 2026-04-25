@@ -10,7 +10,7 @@ pub mod threading;
 pub mod types;
 
 pub use credential_store::{
-    fallback_credentials_for_email, CredentialStore, InMemoryCredentialStore,
+    CredentialStore, InMemoryCredentialStore,
 };
 pub use imap_client::{
     FakeImapClientFactory, IdleResult, ImapClient, ImapClientFactory, ImapEnvelope, ImapFolder,
@@ -20,7 +20,8 @@ pub use message_parser::{AttachmentData, MessageHeaders, MessageParser, ParsedMe
 pub use oauth::{OAuthAuthorizationRequest, OAuthManager, OAuthProviderConfig, OAuthTokens};
 pub use outbox_sender::{drain_outbox_for_account, OutboxSendReport};
 pub use smtp_client::{
-    FakeSmtpClient, MailAddress, MimeAttachment, MimeMessage, SmtpClient, SmtpSendReceipt,
+    FakeSmtpClient, LettreSmtpClient, MailAddress, MimeAttachment, MimeMessage, SmtpClient,
+    SmtpSendReceipt,
 };
 pub use sync_manager::{NoopSyncEventEmitter, SyncEventEmitter, SyncManager};
 pub use task_queue::{InMemoryMailTaskQueue, MailTaskQueue};

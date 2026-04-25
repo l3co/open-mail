@@ -46,6 +46,8 @@ const toSafeHtml = (value: string) =>
 
 const toMailAddresses = (emails: string[]) => emails.map((email) => ({ name: null, email }));
 const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : 'Unknown error');
+const isMissingSmtpCredentialsError = (error: unknown) =>
+  toErrorMessage(error).toLowerCase().includes('smtp credentials not configured');
 const readFileBytes = async (file: File) => {
   if (typeof file.arrayBuffer === 'function') {
     return new Uint8Array(await file.arrayBuffer());
@@ -415,26 +417,64 @@ const MailShell = () => {
       return false;
     }
   };
+  const applyFlushReport = (report: OutboxSendReport) => {
+    setQueuedOutboxMessages((current) => {
+      const sentMessages = current.slice(0, report.sent);
+      if (sentMessages.length) {
+        setLocalSentThreadRecords((existing) => [
+          ...sentMessages.map(toLocalSentThreadRecord),
+          ...existing
+        ]);
+      }
+
+      return current.slice(report.sent);
+    });
+  };
 
   const handleFlushOutbox = async () => {
     try {
       setOutboxStatus('Sending queued mail...');
       const report = await flushOutboxMutation.mutateAsync();
-      setQueuedOutboxMessages((current) => {
-        const sentMessages = current.slice(0, report.sent);
-        if (sentMessages.length) {
-          setLocalSentThreadRecords((existing) => [
-            ...sentMessages.map(toLocalSentThreadRecord),
-            ...existing
-          ]);
-        }
-
-        return current.slice(report.sent);
-      });
+      applyFlushReport(report);
       const successMessage = `Sent ${report.sent}/${report.attempted}; failed ${report.failed}`;
       setOutboxStatus(successMessage);
       setComposerToast({ kind: 'success', message: successMessage });
     } catch (error) {
+      if (tauriRuntime.isAvailable() && isMissingSmtpCredentialsError(error)) {
+        const accountId = mailbox?.accountId ?? selectedComposerAccount.id;
+        const username =
+          window.prompt('SMTP username for this account', selectedComposerAccount.email) ??
+          selectedComposerAccount.email;
+        if (!username.trim()) {
+          setOutboxStatus('SMTP send canceled');
+          setComposerToast({ kind: 'error', message: 'SMTP credentials are required to send queued mail' });
+          return;
+        }
+
+        const password = window.prompt('SMTP password or app password', '');
+        if (!password) {
+          setOutboxStatus('SMTP send canceled');
+          setComposerToast({ kind: 'error', message: 'SMTP credentials are required to send queued mail' });
+          return;
+        }
+
+        try {
+          await api.credentials.saveAccountPassword(accountId, username.trim(), password);
+          setOutboxStatus('SMTP credentials saved, retrying send...');
+          const report = await flushOutboxMutation.mutateAsync();
+          applyFlushReport(report);
+          const successMessage = `Sent ${report.sent}/${report.attempted}; failed ${report.failed}`;
+          setOutboxStatus(successMessage);
+          setComposerToast({ kind: 'success', message: successMessage });
+          return;
+        } catch (credentialError) {
+          const credentialMessage = `Could not save SMTP credentials: ${toErrorMessage(credentialError)}`;
+          setOutboxStatus(credentialMessage);
+          setComposerToast({ kind: 'error', message: credentialMessage });
+          return;
+        }
+      }
+
       const errorMessage = `Could not flush outbox: ${toErrorMessage(error)}`;
       setOutboxStatus(errorMessage);
       setComposerToast({ kind: 'error', message: errorMessage });

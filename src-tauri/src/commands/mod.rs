@@ -15,8 +15,9 @@ use crate::{
     domain::read_models::{MailboxOverview, ThreadSummary},
     domain::tasks::MailTask,
     infrastructure::sync::{
-        drain_outbox_for_account, FakeSmtpClient, MailAddress, MimeAttachment, MimeMessage,
-        OAuthAuthorizationRequest, OAuthManager, OutboxSendReport, SyncError, SyncStatusSnapshot,
+        drain_outbox_for_account, FakeSmtpClient, LettreSmtpClient, MailAddress, MimeAttachment,
+        MimeMessage, OAuthAuthorizationRequest, OAuthManager, OutboxSendReport, SyncError,
+        SyncStatusSnapshot,
     },
     AppState,
 };
@@ -229,6 +230,14 @@ pub struct SaveSignatureRequest {
 pub struct SetDefaultSignatureRequest {
     pub signature_id: Option<String>,
     pub account_id: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveAccountCredentialsRequest {
+    pub account_id: String,
+    pub username: String,
+    pub password: String,
 }
 
 async fn list_accounts_for_state(state: &AppState) -> Result<Vec<Account>, String> {
@@ -525,7 +534,27 @@ async fn flush_outbox_for_state(
     state: &AppState,
     account_id: &str,
 ) -> Result<OutboxSendReport, String> {
-    let mut smtp_client = FakeSmtpClient::default();
+    let account = state
+        .account_repo
+        .find_by_id(account_id)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| format!("account not found: {account_id}"))?;
+
+    if account.connection_settings.smtp_host.ends_with("example.com") {
+        let mut smtp_client = FakeSmtpClient::default();
+        return drain_outbox_for_account(
+            state.account_repo.as_ref(),
+            state.outbox_repo.as_ref(),
+            state.credential_store.as_ref(),
+            &mut smtp_client,
+            account_id,
+        )
+        .await
+        .map_err(|error| error.to_string());
+    }
+
+    let mut smtp_client = LettreSmtpClient;
     drain_outbox_for_account(
         state.account_repo.as_ref(),
         state.outbox_repo.as_ref(),
@@ -535,6 +564,29 @@ async fn flush_outbox_for_state(
     )
     .await
     .map_err(|error| error.to_string())
+}
+
+async fn save_account_credentials_for_state(
+    state: &AppState,
+    request: SaveAccountCredentialsRequest,
+) -> Result<(), String> {
+    state
+        .account_repo
+        .find_by_id(&request.account_id)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| format!("account not found: {}", request.account_id))?;
+
+    state
+        .credential_store
+        .save(
+            &request.account_id,
+            crate::infrastructure::sync::Credentials::Password {
+                username: request.username,
+                password: request.password,
+            },
+        )
+        .map_err(|error| error.to_string())
 }
 
 fn build_oauth_authorization_url_for_request(
@@ -787,6 +839,14 @@ pub async fn flush_outbox(
 }
 
 #[tauri::command]
+pub async fn save_account_credentials(
+    state: State<'_, AppState>,
+    request: SaveAccountCredentialsRequest,
+) -> Result<(), String> {
+    save_account_credentials_for_state(&state, request).await
+}
+
+#[tauri::command]
 pub async fn build_oauth_authorization_url(
     request: BuildOAuthAuthorizationUrlRequest,
 ) -> Result<OAuthAuthorizationRequest, String> {
@@ -856,6 +916,16 @@ pub async fn seed_demo_data(state: &AppState) -> Result<(), String> {
         .account_repo
         .save(&account)
         .await
+        .map_err(|error| error.to_string())?;
+    state
+        .credential_store
+        .save(
+            &account.id,
+            crate::infrastructure::sync::Credentials::Password {
+                username: account.email_address.clone(),
+                password: "local-development-token".into(),
+            },
+        )
         .map_err(|error| error.to_string())?;
 
     let folders = vec![

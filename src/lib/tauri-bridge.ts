@@ -55,6 +55,16 @@ export const api = {
     flush: (accountId: string) =>
       invokeOrThrow<OutboxSendReport>('flush_outbox', { accountId })
   },
+  credentials: {
+    saveAccountPassword: (accountId: string, username: string, password: string) =>
+      invokeOrThrow<void>('save_account_credentials', {
+        request: {
+          accountId,
+          username,
+          password
+        }
+      })
+  },
   signatures: {
     list: () => invokeOrThrow<SignatureSettings>('list_signatures'),
     save: (request: Omit<SignatureRecord, 'createdAt' | 'updatedAt'>) =>

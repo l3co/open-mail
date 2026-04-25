@@ -666,7 +666,7 @@ pub async fn send_draft(
 - Conta com credenciais validas
 
 **Criterio de aceite:**
-- [ ] Envio funciona (SMTP)
+- [x] Envio funciona (SMTP)
 - [x] Validacoes pre-envio
 - [x] Loading state durante envio
 - [x] Mensagem movida para Sent apos envio
@@ -674,7 +674,7 @@ pub async fn send_draft(
 - [x] Toast de sucesso/erro
 - [x] Cmd+Enter envia
 
-> Status: o fluxo atual do composer agora bloqueia envio sem destinatarios, pede confirmacao para assunto vazio, expõe botao de discard no footer, aceita `Cmd+Enter` para enfileirar o draft e mostra loading/toast de sucesso ou erro no caminho atual da fila local. Depois de `Flush queue`, a mensagem enviada tambem passa a aparecer na pasta `Sent` no fallback local. SMTP direto e transicoes completas no backend ainda entram nos proximos cortes.
+> Status: o fluxo atual do composer agora bloqueia envio sem destinatarios, pede confirmacao para assunto vazio, expõe botao de discard no footer, aceita `Cmd+Enter` para enfileirar o draft e mostra loading/toast de sucesso ou erro no caminho atual da fila local. O backend Tauri agora tambem tem caminho SMTP real via `lettre`, com credenciais por conta salvas sob demanda no primeiro `Flush queue`; para demo/teste, contas com `example.com` continuam usando transporte fake para manter o ambiente local previsivel. Depois de `Flush queue`, a mensagem enviada tambem passa a aparecer na pasta `Sent` no fallback local.
 
 ---
 
@@ -783,7 +783,7 @@ npm install @tiptap/extension-text-style
 - [x] Attachments (dialog, drag & drop, paste)
 - [x] Assinaturas (criar, editar, auto-insert)
 - [x] Draft auto-save (debounce 2s)
-- [ ] Send flow (validacao, SMTP, Sent folder)
+- [x] Send flow (validacao, SMTP, Sent folder)
 - [x] Reply / Reply All / Forward
 - [x] Quoted text colapsavel
 - [x] Keyboard shortcuts (Cmd+Enter, Cmd+B/I/U)

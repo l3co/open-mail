@@ -9,8 +9,8 @@ use commands::{
     build_oauth_authorization_url, delete_signature, download_attachment, enqueue_outbox_message,
     flush_outbox, force_sync, get_message, get_sync_status, get_sync_status_detail, health_check,
     list_accounts, list_folders, list_messages, list_signatures, list_threads, mailbox_overview,
-    mark_messages_read, mark_messages_unread, open_external_url, save_signature, search_threads,
-    set_default_signature, start_sync, stop_sync,
+    mark_messages_read, mark_messages_unread, open_external_url, save_account_credentials,
+    save_signature, search_threads, set_default_signature, start_sync, stop_sync,
 };
 use domain::events::DomainEvent;
 use domain::repositories::{
@@ -97,6 +97,7 @@ pub fn run() {
             get_sync_status_detail,
             enqueue_outbox_message,
             flush_outbox,
+            save_account_credentials,
             list_signatures,
             save_signature,
             delete_signature,

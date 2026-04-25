@@ -7,7 +7,7 @@ use crate::{
         repositories::{AccountRepository, OutboxRepository},
     },
     infrastructure::sync::{
-        fallback_credentials_for_email, CredentialStore, SmtpClient, SyncError,
+        CredentialStore, SmtpClient, SyncError,
     },
 };
 
@@ -38,7 +38,7 @@ pub async fn drain_outbox_for_account(
         .map_err(|error| SyncError::Operation(error.to_string()))?;
     let credentials = credential_store
         .get(account_id)?
-        .unwrap_or_else(|| fallback_credentials_for_email(&account.email_address));
+        .ok_or_else(|| SyncError::Operation("smtp credentials not configured".into()))?;
     let mut report = OutboxSendReport {
         account_id: account_id.into(),
         attempted: 0,
@@ -140,7 +140,7 @@ mod tests {
                 },
                 Database,
             },
-            sync::{FakeSmtpClient, InMemoryCredentialStore, MailAddress, MimeMessage},
+            sync::{Credentials, FakeSmtpClient, InMemoryCredentialStore, MailAddress, MimeMessage},
         },
     };
 
@@ -225,7 +225,17 @@ mod tests {
     #[tokio::test]
     async fn drain_outbox_marks_valid_messages_as_sent() {
         let (account_repo, outbox_repo) = build_repositories();
+        let credential_store = InMemoryCredentialStore::default();
         account_repo.save(&account()).await.unwrap();
+        credential_store
+            .save(
+                "acc_1",
+                Credentials::Password {
+                    username: "leco@example.com".into(),
+                    password: "demo-password".into(),
+                },
+            )
+            .unwrap();
         outbox_repo
             .save(&queued_message("out_1", mime_message()))
             .await
@@ -235,7 +245,7 @@ mod tests {
         let report = drain_outbox_for_account(
             account_repo.as_ref(),
             outbox_repo.as_ref(),
-            &InMemoryCredentialStore::default(),
+            &credential_store,
             &mut smtp_client,
             "acc_1",
         )
@@ -252,7 +262,17 @@ mod tests {
     #[tokio::test]
     async fn drain_outbox_marks_invalid_messages_as_failed() {
         let (account_repo, outbox_repo) = build_repositories();
+        let credential_store = InMemoryCredentialStore::default();
         account_repo.save(&account()).await.unwrap();
+        credential_store
+            .save(
+                "acc_1",
+                Credentials::Password {
+                    username: "leco@example.com".into(),
+                    password: "demo-password".into(),
+                },
+            )
+            .unwrap();
         let mut invalid_message = mime_message();
         invalid_message.to.clear();
         outbox_repo
@@ -264,7 +284,7 @@ mod tests {
         let report = drain_outbox_for_account(
             account_repo.as_ref(),
             outbox_repo.as_ref(),
-            &InMemoryCredentialStore::default(),
+            &credential_store,
             &mut smtp_client,
             "acc_1",
         )
