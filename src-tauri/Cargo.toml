@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Open Mail desktop client"
 authors = ["Leco"]
 edition = "2021"
+default-run = "open-mail"
 
 [lib]
 name = "open_mail_lib"
