@@ -1,10 +1,9 @@
-import { Link } from 'react-router';
-
 type DoneStepProps = {
   onAddAnother: () => void;
+  onOpenInbox: () => void;
 };
 
-export const DoneStep = ({ onAddAnother }: DoneStepProps) => (
+export const DoneStep = ({ onAddAnother, onOpenInbox }: DoneStepProps) => (
   <section className="onboarding-step-screen">
     <div className="onboarding-step-copy">
       <p className="eyebrow">Done</p>
@@ -16,9 +15,9 @@ export const DoneStep = ({ onAddAnother }: DoneStepProps) => (
       <button className="onboarding-secondary-button" onClick={onAddAnother} type="button">
         Add another account
       </button>
-      <Link className="onboarding-primary-link" to="/">
+      <button className="onboarding-primary-link" onClick={onOpenInbox} type="button">
         Open inbox
-      </Link>
+      </button>
     </div>
   </section>
 );

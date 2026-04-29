@@ -32,6 +32,7 @@ const stripHtmlPreview = (value: string) =>
     .trim();
 
 type ShellFrameProps = {
+  accounts: AccountRecord[];
   backendStatus: string;
   folders: FolderRecord[];
   threads: ThreadSummary[];
@@ -55,6 +56,7 @@ type ShellFrameProps = {
   onSelectFolder: (folderId: string) => void;
   onLoadMoreThreads?: () => Promise<void> | void;
   onApplyLabels: (threadIds: string[], labelIds: string[]) => void;
+  onAddAccount: () => void;
   onMoveThreads: (threadIds: string[], folderId: string) => void;
   onThreadAction: (action: StoreThreadAction, threadIds: string[]) => void;
   onSearchQueryChange: (query: string) => void;
@@ -68,6 +70,7 @@ type ShellFrameProps = {
 };
 
 export const ShellFrame = ({
+  accounts,
   backendStatus,
   folders,
   threads,
@@ -91,6 +94,7 @@ export const ShellFrame = ({
   onSelectFolder,
   onLoadMoreThreads,
   onApplyLabels,
+  onAddAccount,
   onMoveThreads,
   onThreadAction,
   onSearchQueryChange,
@@ -509,11 +513,14 @@ export const ShellFrame = ({
       <div className="shell-backdrop" aria-hidden="true" />
       <MailSidebar
         activeFolderId={activeFolderId}
+        accounts={accounts}
+        activeAccountId={composerAccountId}
         folders={runtimeFolders}
         isCollapsed={isSidebarCollapsed}
         isComposerOpen={isComposerOpen}
         isOutboxBusy={isOutboxBusy}
         outboxStatus={outboxStatus}
+        onAddAccount={onAddAccount}
         onFlushOutbox={onFlushOutbox}
         onSelectFolder={onSelectFolder}
         onToggleComposer={toggleComposer}

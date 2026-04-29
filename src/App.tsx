@@ -591,6 +591,7 @@ const MailShell = () => {
       backendStatus={
         isLoading ? 'Conectando ao backend Tauri...' : isError ? 'Modo web ativo' : data ?? 'Backend pronto'
       }
+      accounts={composerAccounts}
       folders={runtimeFolders}
       threads={threads}
       activeFolderId={selectedFolderId}
@@ -616,6 +617,7 @@ const MailShell = () => {
       hasMoreThreads={!isSearchActive && folderThreadsQuery.hasMore}
       onLoadMoreThreads={folderThreadsQuery.loadMore}
       onApplyLabels={handleApplyLabels}
+      onAddAccount={() => navigate('/onboarding/add-account')}
       onMoveThreads={handleMoveThreads}
       onThreadAction={handleThreadAction}
       onSelectFolder={handleSelectFolder}

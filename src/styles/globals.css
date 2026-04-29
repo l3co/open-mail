@@ -868,6 +868,40 @@ summary.folder-group-title::-webkit-details-marker {
   color: var(--accent);
 }
 
+.account-switcher-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.account-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.account-list-item {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.account-list-item strong {
+  font-size: 0.92rem;
+}
+
+.account-list-item span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.account-list-item-active {
+  border-color: rgba(246, 182, 111, 0.28);
+  background: rgba(246, 182, 111, 0.08);
+}
+
 .hero-copy,
 .thread-preview,
 .insight-list,

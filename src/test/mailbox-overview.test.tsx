@@ -26,7 +26,7 @@ describe('mailbox overview integration', () => {
     expect(await screen.findByText('Custom folders')).toBeInTheDocument();
     expect(await screen.findByText('Labels')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Label design-review' })).toBeInTheDocument();
-    expect(await screen.findByText('Active account')).toBeInTheDocument();
+    expect(await screen.findByText('Accounts')).toBeInTheDocument();
     expect(await screen.findByLabelText('Mailbox status')).toHaveTextContent('2 unread');
     expect(await screen.findByLabelText('Mailbox status')).toHaveTextContent('Inbox');
 
@@ -222,6 +222,42 @@ describe('mailbox overview integration', () => {
       expect(message).toHaveTextContent('Operations');
     });
     expect(message).not.toHaveTextContent('Best,');
+  });
+
+  it('opens add account from the sidebar and shows the new account in the shell list', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add account' }));
+
+    expect(await screen.findByRole('heading', { name: 'Add your email account' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Get started' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Other IMAP/i }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Operations' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ops@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret' } });
+    fireEvent.change(screen.getByLabelText('IMAP server'), { target: { value: 'imap.example.com' } });
+    fireEvent.change(screen.getByLabelText('SMTP server'), { target: { value: 'smtp.example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Review connection' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Run checks' }));
+    await screen.findAllByText('Ready');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to sync' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Run initial sync' }));
+    expect(useAccountStore.getState().accounts.some((account) => account.email === 'ops@example.com')).toBe(true);
+
+    act(() => {
+      window.history.pushState({}, '', '/');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    const configuredAccounts = await screen.findByLabelText('Configured accounts');
+    expect(within(configuredAccounts).getByText('Operations')).toBeInTheDocument();
+    expect(within(configuredAccounts).getByText('ops@example.com')).toBeInTheDocument();
   });
 
   it('supports phase 3 thread action shortcuts with status feedback', async () => {

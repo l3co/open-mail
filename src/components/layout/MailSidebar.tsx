@@ -16,14 +16,18 @@ import {
 } from 'lucide-react';
 import openMailLogo from '@/assets/logo.svg';
 import type { FolderRecord } from '@lib/contracts';
+import type { AccountRecord } from '@stores/useAccountStore';
 
 type MailSidebarProps = {
   activeFolderId: string | null;
+  accounts: AccountRecord[];
+  activeAccountId: string;
   folders: FolderRecord[];
   isCollapsed: boolean;
   isComposerOpen: boolean;
   isOutboxBusy: boolean;
   outboxStatus: string;
+  onAddAccount: () => void;
   onFlushOutbox: () => Promise<void>;
   onSelectFolder: (folderId: string) => void;
   onToggleComposer: () => void;
@@ -49,17 +53,19 @@ const labelPreviews = [
 
 export const MailSidebar = ({
   activeFolderId,
+  accounts,
+  activeAccountId,
   folders,
   isCollapsed,
   isComposerOpen,
   isOutboxBusy,
   outboxStatus,
+  onAddAccount,
   onFlushOutbox,
   onSelectFolder,
   onToggleComposer,
   onToggleSidebar
 }: MailSidebarProps) => {
-  const accountId = folders[0]?.account_id ?? 'acc_demo';
   const systemFolders = folders.filter((folder) => folder.role);
   const customFolders = folders.filter((folder) => !folder.role);
 
@@ -177,12 +183,31 @@ export const MailSidebar = ({
       {!isCollapsed ? (
         <div className="account-switcher">
           <div>
-            <span>Active account</span>
-            <strong>{accountId}</strong>
+            <span>Accounts</span>
+            <strong>{accounts.find((account) => account.id === activeAccountId)?.displayName ?? activeAccountId}</strong>
           </div>
-          <button aria-label="Open account settings" type="button">
-            <Settings size={15} />
-          </button>
+          <div className="account-switcher-actions">
+            <button aria-label="Add account" onClick={onAddAccount} type="button">
+              <PencilLine size={15} />
+            </button>
+            <button aria-label="Open account settings" type="button">
+              <Settings size={15} />
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {!isCollapsed ? (
+        <div className="account-list" aria-label="Configured accounts">
+          {accounts.map((account) => (
+            <div
+              className={account.id === activeAccountId ? 'account-list-item account-list-item-active' : 'account-list-item'}
+              key={account.id}
+            >
+              <strong>{account.displayName}</strong>
+              <span>{account.email}</span>
+            </div>
+          ))}
         </div>
       ) : null}
     </aside>

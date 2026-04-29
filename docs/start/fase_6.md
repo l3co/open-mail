@@ -179,10 +179,12 @@ O mesmo fluxo de onboarding, mas acessivel via:
 Diferenca: nao mostra tela de Welcome, vai direto para Select Provider.
 
 **Criterio de aceite:**
-- [ ] Adicionar segunda conta funciona
-- [ ] Sidebar mostra ambas as contas
+- [x] Adicionar segunda conta funciona
+- [x] Sidebar mostra ambas as contas
 - [ ] Sync roda independente por conta
 - [ ] Unified inbox mostra threads de todas as contas
+
+> Status: o shell agora consegue abrir o onboarding como `Add account` sem a etapa de `Welcome`, e a sidebar passa a listar as contas configuradas no app depois que o fluxo termina. O que ainda fica aberto nesta frente e a navegacao/sync realmente independentes por conta e a visao unificada de inbox.
 
 ---
 

@@ -9,6 +9,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import { DoneStep } from '@components/onboarding/DoneStep';
 import { ImapStep, type ImapFormState } from '@components/onboarding/ImapStep';
 import { OAuthStep } from '@components/onboarding/OAuthStep';
@@ -216,10 +217,12 @@ const defaultImapForm = (provider: ProviderOption | null): ImapFormState => {
 
 export const OnboardingView = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const upsertAccount = useAccountStore((state) => state.upsertAccount);
   const selectAccount = useAccountStore((state) => state.selectAccount);
-  const [step, setStep] = useState<StepId>('welcome');
+  const startsAtProvider = location.pathname.includes('/onboarding/add-account');
+  const [step, setStep] = useState<StepId>(startsAtProvider ? 'provider' : 'welcome');
   const [selectedProvider, setSelectedProvider] = useState<ProviderOption | null>(null);
   const [oauthClientId, setOauthClientId] = useState('');
   const [oauthDisplayName, setOauthDisplayName] = useState('');
@@ -282,7 +285,7 @@ export const OnboardingView = () => {
     setSyncStarted(false);
     setSyncProgress(0);
     setSyncStatus('Ready to start initial sync');
-    setStep('provider');
+    setStep(startsAtProvider ? 'provider' : 'welcome');
   };
 
   const handleSelectProvider = (provider: ProviderOption) => {
@@ -343,6 +346,12 @@ export const OnboardingView = () => {
       setOauthStatus(error instanceof Error ? error.message : 'Could not prepare browser auth');
     }
   };
+
+  useEffect(() => {
+    if (startsAtProvider && step === 'welcome') {
+      setStep('provider');
+    }
+  }, [startsAtProvider, step]);
 
   useEffect(() => {
     if (selectedProvider?.kind !== 'imap') {
@@ -796,7 +805,7 @@ export const OnboardingView = () => {
         />
       ) : null}
 
-      {step === 'done' ? <DoneStep onAddAnother={resetFlow} /> : null}
+      {step === 'done' ? <DoneStep onAddAnother={resetFlow} onOpenInbox={() => navigate('/')} /> : null}
     </OnboardingLayout>
   );
 };
