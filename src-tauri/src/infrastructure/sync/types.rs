@@ -14,7 +14,8 @@ pub enum SyncError {
     Operation(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", tag = "kind")]
 pub enum Credentials {
     Password {
         username: String,

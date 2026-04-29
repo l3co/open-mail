@@ -10,7 +10,7 @@ pub mod threading;
 pub mod types;
 
 pub use credential_store::{
-    CredentialStore, InMemoryCredentialStore,
+    CredentialStore, FileCredentialStore, InMemoryCredentialStore,
 };
 pub use imap_client::{
     FakeImapClientFactory, IdleResult, ImapClient, ImapClientFactory, ImapEnvelope, ImapFolder,

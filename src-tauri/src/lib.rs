@@ -31,7 +31,7 @@ use infrastructure::{
         Database,
     },
     sync::{
-        CredentialStore, InMemoryCredentialStore, InMemoryMailTaskQueue, MailTaskQueue,
+        CredentialStore, FileCredentialStore, InMemoryMailTaskQueue, MailTaskQueue,
         SyncEventEmitter, SyncManager,
     },
 };
@@ -136,7 +136,9 @@ fn build_app_state() -> Result<AppState, String> {
     let outbox_repo: Arc<dyn OutboxRepository> = Arc::new(SqliteOutboxRepository::new(db.clone()));
     let signature_repo: Arc<dyn SignatureRepository> =
         Arc::new(SqliteSignatureRepository::new(db.clone()));
-    let credential_store: Arc<dyn CredentialStore> = Arc::new(InMemoryCredentialStore::default());
+    let credential_store_path = default_credential_store_path();
+    let credential_store: Arc<dyn CredentialStore> =
+        Arc::new(FileCredentialStore::new(&credential_store_path).map_err(|error| error.to_string())?);
     let task_queue: Arc<dyn MailTaskQueue> = Arc::new(InMemoryMailTaskQueue::default());
     let sync_cursor_repo: Arc<dyn SyncCursorRepository> =
         Arc::new(SqliteSyncCursorRepository::new(db.clone()));
@@ -165,6 +167,10 @@ fn build_app_state() -> Result<AppState, String> {
 
 fn default_database_path() -> PathBuf {
     std::env::temp_dir().join("open-mail-dev.sqlite")
+}
+
+fn default_credential_store_path() -> PathBuf {
+    std::env::temp_dir().join("open-mail-dev-credentials.json")
 }
 
 #[cfg(test)]
