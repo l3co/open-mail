@@ -36,6 +36,7 @@ export const useSyncStatusDetail = (accountId: string | null) =>
   useQuery({
     queryKey: ['sync-status-detail', accountId],
     enabled: accountId !== null,
+    refetchInterval: tauriRuntime.isAvailable() && accountId ? 1000 : false,
     queryFn: async () => {
       if (!accountId) {
         return null;

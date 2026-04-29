@@ -17,6 +17,7 @@ import { ProviderCard } from '@components/onboarding/ProviderCard';
 import { SyncStep } from '@components/onboarding/SyncStep';
 import { TestConnectionStep } from '@components/onboarding/TestConnectionStep';
 import { WelcomeStep } from '@components/onboarding/WelcomeStep';
+import { useSyncStatusDetail } from '@hooks/useSyncStatusDetail';
 import type { AccountProvider, ConnectionSettings, SecurityType } from '@lib/contracts';
 import { api, tauriRuntime } from '@lib/tauri-bridge';
 import { useAccountStore } from '@stores/useAccountStore';
@@ -234,8 +235,10 @@ export const OnboardingView = () => {
   );
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
   const [createdAccountId, setCreatedAccountId] = useState<string | null>(null);
+  const [syncStarted, setSyncStarted] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncStatus, setSyncStatus] = useState('Ready to start initial sync');
+  const syncStatusDetailQuery = useSyncStatusDetail(createdAccountId);
 
   const currentStepIndex = useMemo(() => {
     switch (step) {
@@ -276,6 +279,7 @@ export const OnboardingView = () => {
     setConnectionChecks(createEmptyConnectionChecks());
     setConnectionStatus(null);
     setCreatedAccountId(null);
+    setSyncStarted(false);
     setSyncProgress(0);
     setSyncStatus('Ready to start initial sync');
     setStep('provider');
@@ -293,6 +297,7 @@ export const OnboardingView = () => {
     setImapHelper(null);
     setAutodiscoveredEmail(null);
     setCreatedAccountId(null);
+    setSyncStarted(false);
     setSyncProgress(0);
     setSyncStatus('Ready to start initial sync');
 
@@ -450,6 +455,63 @@ export const OnboardingView = () => {
 
     return () => window.clearTimeout(timeoutId);
   }, [autodiscoveredEmail, imapForm.email, selectedProvider?.kind]);
+
+  useEffect(() => {
+    if (step !== 'sync' || !syncStarted) {
+      return;
+    }
+
+    if (!tauriRuntime.isAvailable()) {
+      return;
+    }
+
+    const status = syncStatusDetailQuery.data;
+    if (!status) {
+      setSyncStatus('Connecting to the mailbox…');
+      setSyncProgress(12);
+      return;
+    }
+
+    const folderCount = Math.max(status.folders.length, 1);
+    const folderProgress = Math.min(status.foldersSynced / folderCount, 1);
+    const messageProgress = status.messagesObserved > 0 ? 1 : 0;
+    const phaseBase =
+      status.phase === 'connecting'
+        ? 12
+        : status.phase === 'discovering-folders'
+          ? 28
+          : status.phase === 'syncing-folders'
+            ? 52
+            : 82;
+    const computedProgress =
+      status.phase === 'idling'
+        ? 100
+        : Math.min(
+            95,
+            Math.round(phaseBase + folderProgress * 28 + messageProgress * 12)
+          );
+
+    const computedStatus =
+      status.state.kind === 'error'
+        ? status.state.message
+        : status.phase === 'connecting'
+          ? 'Connecting to the mailbox…'
+          : status.phase === 'discovering-folders'
+            ? 'Discovering folders…'
+            : status.phase === 'syncing-folders'
+              ? `Syncing folders… (${status.foldersSynced}/${folderCount})`
+              : status.messagesObserved > 0
+                ? `Inbox ready with ${status.messagesObserved} observed message(s)`
+                : 'Inbox sync is idling in the background…';
+
+    setSyncProgress(computedProgress);
+    setSyncStatus(computedStatus);
+
+    if (status.phase === 'idling' && status.state.kind !== 'error') {
+      setSyncProgress(100);
+      setStep('done');
+    }
+  }, [step, syncStarted, syncStatusDetailQuery.data]);
 
   const handleRunChecks = async () => {
     setConnectionStatus(null);
@@ -616,27 +678,30 @@ export const OnboardingView = () => {
   };
 
   const handleRunSync = async () => {
+    setSyncStarted(true);
     setSyncStatus('Syncing inbox headers…');
     setSyncProgress(18);
 
     if (tauriRuntime.isAvailable() && createdAccountId) {
       try {
         await api.sync.start(createdAccountId);
+        await syncStatusDetailQuery.refetch();
       } catch (error) {
         setSyncStatus(error instanceof Error ? error.message : 'Could not start background sync');
         return;
       }
+    } else {
+      await sleep(220);
+      setSyncStatus('Applying first thread window…');
+      setSyncProgress(54);
+      await sleep(220);
+      setSyncStatus('Handing the rest to background sync…');
+      setSyncProgress(100);
+      await queryClient.invalidateQueries({ queryKey: ['mailbox-overview'] });
+      await queryClient.invalidateQueries({ queryKey: ['sync-status-detail'] });
+      setStep('done');
+      return;
     }
-
-    await sleep(220);
-    setSyncStatus('Applying first thread window…');
-    setSyncProgress(54);
-    await sleep(220);
-    setSyncStatus('Handing the rest to background sync…');
-    setSyncProgress(100);
-    await queryClient.invalidateQueries({ queryKey: ['mailbox-overview'] });
-    await queryClient.invalidateQueries({ queryKey: ['sync-status-detail'] });
-    setStep('done');
   };
 
   return (
