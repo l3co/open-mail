@@ -3,6 +3,7 @@ import type {
   AccountRecordResponse,
   AddAccountRequest,
   BuildOAuthAuthorizationUrlRequest,
+  CompleteOAuthAccountRequest,
   EnqueueOutboxMessageRequest,
   MailboxOverview,
   MessageRecord,
@@ -88,7 +89,9 @@ export const api = {
   },
   auth: {
     buildOAuthAuthorizationUrl: (request: BuildOAuthAuthorizationUrlRequest) =>
-      invokeOrThrow<OAuthAuthorizationRequest>('build_oauth_authorization_url', { request })
+      invokeOrThrow<OAuthAuthorizationRequest>('build_oauth_authorization_url', { request }),
+    completeOAuthAccount: (request: CompleteOAuthAccountRequest) =>
+      invokeOrThrow<AccountRecordResponse>('complete_oauth_account', { request })
   },
   onboarding: {
     testImapConnection: (request: TestMailConnectionRequest) =>

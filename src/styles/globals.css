@@ -2246,6 +2246,16 @@ summary.folder-group-title::-webkit-details-marker {
   color: var(--text);
 }
 
+.onboarding-auth-code {
+  min-height: 120px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(8, 17, 31, 0.58);
+  color: var(--text);
+  resize: vertical;
+}
+
 .onboarding-field-full {
   grid-column: 1 / -1;
 }

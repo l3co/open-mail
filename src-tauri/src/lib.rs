@@ -6,10 +6,10 @@ pub mod plugins;
 use std::{path::PathBuf, sync::Arc};
 
 use commands::{
-    add_account, build_oauth_authorization_url, delete_draft, delete_signature,
-    download_attachment, enqueue_outbox_message, flush_outbox, force_sync, get_message,
-    get_sync_status, get_sync_status_detail, health_check, list_accounts, list_drafts,
-    list_folders, list_messages, list_signatures, list_threads, mailbox_overview,
+    add_account, build_oauth_authorization_url, complete_oauth_account, delete_draft,
+    delete_signature, download_attachment, enqueue_outbox_message, flush_outbox, force_sync,
+    get_message, get_sync_status, get_sync_status_detail, health_check, list_accounts,
+    list_drafts, list_folders, list_messages, list_signatures, list_threads, mailbox_overview,
     mark_messages_read, mark_messages_unread, open_external_url, save_account_credentials,
     save_draft, save_signature, search_threads, set_default_signature, start_sync, stop_sync,
     test_imap_connection, test_smtp_connection,
@@ -87,6 +87,7 @@ pub fn run() {
             health_check,
             list_accounts,
             add_account,
+            complete_oauth_account,
             list_folders,
             list_drafts,
             list_threads,

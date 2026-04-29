@@ -48,6 +48,15 @@ export type AddAccountRequest = {
   credentials: ConnectionCredentials;
 };
 
+export type CompleteOAuthAccountRequest = {
+  provider: AccountProvider;
+  clientId: string;
+  redirectUri: string;
+  authorizationCode: string;
+  email: string;
+  name: string;
+};
+
 export type BuildOAuthAuthorizationUrlRequest = {
   provider: AccountProvider;
   clientId: string;

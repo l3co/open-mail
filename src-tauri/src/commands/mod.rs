@@ -279,6 +279,17 @@ pub struct AddAccountRequest {
     pub credentials: ConnectionCredentialsRequest,
 }
 
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompleteOAuthAccountRequest {
+    pub provider: AccountProvider,
+    pub client_id: String,
+    pub redirect_uri: String,
+    pub authorization_code: String,
+    pub email: String,
+    pub name: String,
+}
+
 async fn list_accounts_for_state(state: &AppState) -> Result<Vec<Account>, String> {
     state
         .account_repo
@@ -292,6 +303,45 @@ fn password_credentials(request: &ConnectionCredentialsRequest) -> crate::infras
         username: request.username.trim().to_string(),
         password: request.password.clone(),
     }
+}
+
+async fn persist_account_with_credentials(
+    state: &AppState,
+    name: String,
+    email: String,
+    provider: AccountProvider,
+    settings: ConnectionSettings,
+    credentials: crate::infrastructure::sync::Credentials,
+) -> Result<Account, String> {
+    let account_id = format!("acc_{}", Uuid::new_v4().simple());
+    let now = chrono::Utc::now();
+    let account = Account {
+        id: account_id,
+        name: name.trim().to_string(),
+        email_address: email.trim().to_string(),
+        provider,
+        connection_settings: settings,
+        sync_state: SyncState::NotStarted,
+        created_at: now,
+        updated_at: now,
+    };
+
+    state
+        .account_repo
+        .save(&account)
+        .await
+        .map_err(|error| error.to_string())?;
+    state
+        .credential_store
+        .save(&account.id, credentials)
+        .map_err(|error| error.to_string())?;
+    state
+        .folder_repo
+        .save_batch(&create_account_folders(&account.id, now))
+        .await
+        .map_err(|error| error.to_string())?;
+
+    Ok(account)
 }
 
 fn create_account_folders(account_id: &str, timestamp: chrono::DateTime<chrono::Utc>) -> Vec<Folder> {
@@ -378,35 +428,15 @@ async fn test_smtp_connection_for_state(
 }
 
 async fn add_account_for_state(state: &AppState, request: AddAccountRequest) -> Result<Account, String> {
-    let account_id = format!("acc_{}", Uuid::new_v4().simple());
-    let now = chrono::Utc::now();
-    let account = Account {
-        id: account_id.clone(),
-        name: request.name.trim().to_string(),
-        email_address: request.email.trim().to_string(),
-        provider: request.provider,
-        connection_settings: request.settings,
-        sync_state: SyncState::NotStarted,
-        created_at: now,
-        updated_at: now,
-    };
-
-    state
-        .account_repo
-        .save(&account)
-        .await
-        .map_err(|error| error.to_string())?;
-    state
-        .credential_store
-        .save(&account.id, password_credentials(&request.credentials))
-        .map_err(|error| error.to_string())?;
-    state
-        .folder_repo
-        .save_batch(&create_account_folders(&account.id, now))
-        .await
-        .map_err(|error| error.to_string())?;
-
-    Ok(account)
+    persist_account_with_credentials(
+        state,
+        request.name,
+        request.email,
+        request.provider,
+        request.settings,
+        password_credentials(&request.credentials),
+    )
+    .await
 }
 
 fn default_signature(now: chrono::DateTime<chrono::Utc>) -> Signature {
@@ -923,6 +953,80 @@ fn build_oauth_authorization_url_for_request(
         .map_err(|error| error.to_string())
 }
 
+fn oauth_connection_settings(provider: &AccountProvider) -> Result<ConnectionSettings, String> {
+    match provider {
+        AccountProvider::Gmail => Ok(ConnectionSettings {
+            imap_host: "imap.gmail.com".into(),
+            imap_port: 993,
+            imap_security: SecurityType::Ssl,
+            smtp_host: "smtp.gmail.com".into(),
+            smtp_port: 465,
+            smtp_security: SecurityType::Ssl,
+        }),
+        AccountProvider::Outlook | AccountProvider::Exchange => Ok(ConnectionSettings {
+            imap_host: "outlook.office365.com".into(),
+            imap_port: 993,
+            imap_security: SecurityType::Ssl,
+            smtp_host: "smtp.office365.com".into(),
+            smtp_port: 587,
+            smtp_security: SecurityType::StartTls,
+        }),
+        _ => Err(format!("oauth is not supported for provider {provider}")),
+    }
+}
+
+fn preview_oauth_tokens(
+    provider: &AccountProvider,
+    authorization_code: &str,
+) -> Result<crate::infrastructure::sync::OAuthTokens, String> {
+    let code = authorization_code.trim();
+    if code.is_empty() {
+        return Err("oauth authorization code cannot be empty".into());
+    }
+
+    let now = chrono::Utc::now();
+    Ok(crate::infrastructure::sync::OAuthTokens {
+        access_token: format!("oauth-preview-{}-{code}", provider.to_string()),
+        refresh_token: Some(format!("refresh-preview-{code}")),
+        expires_at: now + chrono::Duration::hours(1),
+        scopes: match provider {
+            AccountProvider::Gmail => vec!["https://mail.google.com/".into()],
+            AccountProvider::Outlook | AccountProvider::Exchange => vec![
+                "https://outlook.office365.com/IMAP.AccessAsUser.All".into(),
+                "https://outlook.office365.com/SMTP.Send".into(),
+                "offline_access".into(),
+            ],
+            _ => vec![],
+        },
+    })
+}
+
+async fn complete_oauth_account_for_state(
+    state: &AppState,
+    request: CompleteOAuthAccountRequest,
+) -> Result<Account, String> {
+    let config = OAuthManager::provider_config(
+        request.provider.clone(),
+        request.client_id.clone(),
+        request.redirect_uri.clone(),
+    )
+    .map_err(|error| error.to_string())?;
+    let tokens = preview_oauth_tokens(&request.provider, &request.authorization_code)?;
+    let credentials = OAuthManager::credentials_from_tokens(request.email.clone(), &tokens)
+        .map_err(|error| error.to_string())?;
+    let settings = oauth_connection_settings(&config.provider)?;
+
+    persist_account_with_credentials(
+        state,
+        request.name,
+        request.email,
+        config.provider,
+        settings,
+        credentials,
+    )
+    .await
+}
+
 fn validate_external_url(url: &str) -> Result<String, String> {
     let trimmed_url = url.trim();
     let (scheme, _) = trimmed_url
@@ -1059,6 +1163,14 @@ pub async fn add_account(
     request: AddAccountRequest,
 ) -> Result<Account, String> {
     add_account_for_state(&state, request).await
+}
+
+#[tauri::command]
+pub async fn complete_oauth_account(
+    state: State<'_, AppState>,
+    request: CompleteOAuthAccountRequest,
+) -> Result<Account, String> {
+    complete_oauth_account_for_state(&state, request).await
 }
 
 #[tauri::command]
@@ -1572,15 +1684,16 @@ mod tests {
 
     use super::{
         add_account_for_state, build_oauth_authorization_url_for_request,
-        delete_draft_for_state, download_attachment_file, enqueue_outbox_message_for_state,
-        flush_outbox_for_state, force_sync_for_state, get_message_for_state,
-        get_sync_status_detail_for_state, get_sync_status_for_state, list_drafts_for_state,
-        list_messages_for_state, list_threads_for_state, mailbox_overview_for_state,
-        mark_messages_read_for_state, save_draft_for_state, search_threads_for_state,
-        seed_demo_data, start_sync_for_state, stop_sync_for_state,
+        complete_oauth_account_for_state, delete_draft_for_state, download_attachment_file,
+        enqueue_outbox_message_for_state, flush_outbox_for_state, force_sync_for_state,
+        get_message_for_state, get_sync_status_detail_for_state, get_sync_status_for_state,
+        list_drafts_for_state, list_messages_for_state, list_threads_for_state,
+        mailbox_overview_for_state, mark_messages_read_for_state, save_draft_for_state,
+        search_threads_for_state, seed_demo_data, start_sync_for_state, stop_sync_for_state,
         test_imap_connection_for_state, test_smtp_connection_for_state, validate_external_url,
-        AddAccountRequest, BuildOAuthAuthorizationUrlRequest, ConnectionCredentialsRequest,
-        EnqueueOutboxMessageRequest, SaveDraftRequest, TestMailConnectionRequest,
+        AddAccountRequest, BuildOAuthAuthorizationUrlRequest, CompleteOAuthAccountRequest,
+        ConnectionCredentialsRequest, EnqueueOutboxMessageRequest, SaveDraftRequest,
+        TestMailConnectionRequest,
     };
     use crate::{
         domain::models::{
@@ -1742,6 +1855,41 @@ mod tests {
             credentials,
             Some(crate::infrastructure::sync::Credentials::Password { username, password })
                 if username == "manual@example.com" && password == "secret"
+        ));
+    }
+
+    #[tokio::test]
+    async fn onboarding_oauth_command_persists_account_with_oauth_credentials() {
+        let state = build_test_state();
+
+        let account = complete_oauth_account_for_state(
+            &state,
+            CompleteOAuthAccountRequest {
+                provider: AccountProvider::Gmail,
+                client_id: "gmail-client".into(),
+                redirect_uri: "openmail://oauth/callback".into(),
+                authorization_code: "sample-code".into(),
+                email: "oauth@example.com".into(),
+                name: "OAuth User".into(),
+            },
+        )
+        .await
+        .unwrap();
+
+        let persisted_account = state
+            .account_repo
+            .find_by_id(&account.id)
+            .await
+            .unwrap()
+            .expect("oauth account should persist");
+        let credentials = state.credential_store.get(&account.id).unwrap();
+
+        assert_eq!(persisted_account.provider, AccountProvider::Gmail);
+        assert_eq!(persisted_account.connection_settings.imap_host, "imap.gmail.com");
+        assert!(matches!(
+            credentials,
+            Some(crate::infrastructure::sync::Credentials::OAuth2 { username, access_token })
+                if username == "oauth@example.com" && access_token.contains("oauth-preview-gmail-sample-code")
         ));
     }
 

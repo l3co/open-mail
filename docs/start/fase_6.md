@@ -164,7 +164,7 @@ pub async fn add_account(
 - [ ] Credenciais salvas no keychain
 - [x] Conta persitida no banco
 
-> Status: o onboarding ja tem wizard real de ponta a ponta no frontend, e agora o caminho `IMAP manual` tambem testa `IMAP/SMTP` pelo backend Tauri, persiste a conta no SQLite e salva as credenciais no runtime desktop atual antes do sync inicial. O que segue aberto neste bloco e mais pesado e especifico: `OAuth` completo com callback/token exchange, autodiscover, keychain de verdade e um sync inicial menos simulado.
+> Status: o onboarding ja tem wizard real de ponta a ponta no frontend, o caminho `IMAP manual` testa `IMAP/SMTP` pelo backend Tauri e persiste conta/credenciais, e o caminho `OAuth` agora tambem avanca alem da URL de autorizacao com captura manual do `authorization code` e persistencia local da conta no desktop. O que segue aberto neste bloco e mais pesado e especifico: troca live do code por tokens no provedor, autodiscover, keychain de verdade e um sync inicial menos simulado.
 
 ---
 

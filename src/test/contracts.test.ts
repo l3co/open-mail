@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type {
   BuildOAuthAuthorizationUrlRequest,
+  CompleteOAuthAccountRequest,
   DomainEvent,
   EnqueueOutboxMessageRequest,
   MailboxReadModel,
@@ -136,5 +137,19 @@ describe('contracts', () => {
 
     expect(authorization.provider).toBe('Gmail');
     expect(authorization.scopes).toContain('https://mail.google.com/');
+  });
+
+  it('supports oauth account completion requests for phase 6 onboarding', () => {
+    const request: CompleteOAuthAccountRequest = {
+      provider: 'Outlook',
+      clientId: 'outlook-client',
+      redirectUri: 'openmail://oauth/callback',
+      authorizationCode: 'returned-code',
+      email: 'outlook@example.com',
+      name: 'Outlook User'
+    };
+
+    expect(request.authorizationCode).toBe('returned-code');
+    expect(request.provider).toBe('Outlook');
   });
 });

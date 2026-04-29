@@ -36,4 +36,33 @@ describe('onboarding flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Run initial sync' }));
     expect(await screen.findByRole('heading', { name: "You're all set" })).toBeInTheDocument();
   });
+
+  it('walks through the oauth onboarding path with the returned code step', async () => {
+    window.history.pushState({}, '', '/onboarding/account');
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Get started' }));
+    fireEvent.click(screen.getByRole('button', { name: /Gmail/i }));
+
+    fireEvent.change(screen.getByLabelText('Gmail client ID'), { target: { value: 'gmail-client' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Prepare browser auth' }));
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Leco OAuth' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'leco@gmail.com' } });
+    fireEvent.change(screen.getByLabelText('Authorization code'), { target: { value: 'oauth-code' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(screen.getByRole('heading', { name: 'Validate the account before syncing' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run checks' }));
+    await screen.findAllByText('Ready');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to sync' }));
+
+    expect(screen.getByRole('heading', { name: 'Warm up the inbox' })).toBeInTheDocument();
+  });
 });

@@ -221,6 +221,9 @@ export const OnboardingView = () => {
   const [step, setStep] = useState<StepId>('welcome');
   const [selectedProvider, setSelectedProvider] = useState<ProviderOption | null>(null);
   const [oauthClientId, setOauthClientId] = useState('');
+  const [oauthDisplayName, setOauthDisplayName] = useState('');
+  const [oauthEmail, setOauthEmail] = useState('');
+  const [oauthAuthorizationCode, setOauthAuthorizationCode] = useState('');
   const [oauthStatus, setOauthStatus] = useState<string | null>(null);
   const [oauthAuthUrl, setOauthAuthUrl] = useState<string | null>(null);
   const [imapForm, setImapForm] = useState<ImapFormState>(defaultImapForm(null));
@@ -251,7 +254,7 @@ export const OnboardingView = () => {
   }, [step]);
 
   const testHelper = selectedProvider?.kind === 'oauth'
-    ? 'We validate that the OAuth request is prepared and the browser handoff is ready.'
+    ? 'We validate that the OAuth request is prepared and that the returned authorization code can continue into local account setup.'
     : 'We validate the IMAP and SMTP settings you entered, then persist the account before the first sync starts.';
 
   const checksReady = connectionChecks.every((check) => check.status === 'success');
@@ -260,6 +263,9 @@ export const OnboardingView = () => {
   const resetFlow = () => {
     setSelectedProvider(null);
     setOauthClientId('');
+    setOauthDisplayName('');
+    setOauthEmail('');
+    setOauthAuthorizationCode('');
     setOauthStatus(null);
     setOauthAuthUrl(null);
     setImapForm(defaultImapForm(null));
@@ -275,6 +281,9 @@ export const OnboardingView = () => {
     setSelectedProvider(provider);
     setOauthStatus(null);
     setOauthAuthUrl(null);
+    setOauthDisplayName('');
+    setOauthEmail('');
+    setOauthAuthorizationCode('');
     setConnectionChecks(createEmptyConnectionChecks());
     setConnectionStatus(null);
     setCreatedAccountId(null);
@@ -310,14 +319,14 @@ export const OnboardingView = () => {
 
     if (!tauriRuntime.isAvailable()) {
       setOauthAuthUrl(`preview://${selectedProvider.id}/oauth?client_id=${encodeURIComponent(request.clientId)}`);
-      setOauthStatus('Browser auth preview prepared in web mode.');
+      setOauthStatus('Browser auth preview prepared in web mode. Paste the returned code to continue the desktop-style flow.');
       return;
     }
 
     try {
       const authRequest = await api.auth.buildOAuthAuthorizationUrl(request);
       setOauthAuthUrl(authRequest.authorizationUrl);
-      setOauthStatus(`Browser auth prepared for ${selectedProvider.title}.`);
+      setOauthStatus(`Browser auth prepared for ${selectedProvider.title}. Finish consent in the browser, then paste the returned authorization code here.`);
       await api.system.openExternalUrl(authRequest.authorizationUrl);
     } catch (error) {
       setOauthStatus(error instanceof Error ? error.message : 'Could not prepare browser auth');
@@ -338,7 +347,7 @@ export const OnboardingView = () => {
       );
       setConnectionStatus(
         oauthAuthUrl
-          ? 'Browser auth is prepared. OAuth token exchange lands in the next cut.'
+          ? 'Browser auth is prepared. Continue to persist the account after the returned code is filled in.'
           : 'Prepare the browser auth request before continuing.'
       );
       return;
@@ -400,7 +409,44 @@ export const OnboardingView = () => {
 
   const handleContinueFromChecks = async () => {
     if (selectedProvider?.kind === 'oauth') {
-      setStep('sync');
+      try {
+        if (!tauriRuntime.isAvailable()) {
+          const localAccountId = `acc_oauth_${Date.now()}`;
+          upsertAccount({
+            id: localAccountId,
+            provider: selectedProvider.provider,
+            email: oauthEmail.trim(),
+            displayName: oauthDisplayName.trim()
+          });
+          selectAccount(localAccountId);
+          setCreatedAccountId(localAccountId);
+          setConnectionStatus('OAuth preview account saved in web mode.');
+          setStep('sync');
+          return;
+        }
+
+        const account = await api.auth.completeOAuthAccount({
+          provider: selectedProvider.provider,
+          clientId: oauthClientId.trim(),
+          redirectUri: 'openmail://oauth/callback',
+          authorizationCode: oauthAuthorizationCode.trim(),
+          email: oauthEmail.trim(),
+          name: oauthDisplayName.trim()
+        });
+        upsertAccount({
+          id: account.id,
+          provider: account.provider,
+          email: account.emailAddress,
+          displayName: account.name
+        });
+        selectAccount(account.id);
+        setCreatedAccountId(account.id);
+        setConnectionStatus('OAuth account saved locally. Ready to start the first sync.');
+        setStep('sync');
+      } catch (error) {
+        setConnectionStatus(error instanceof Error ? error.message : 'Could not complete OAuth account setup');
+      }
+
       return;
     }
 
@@ -510,10 +556,16 @@ export const OnboardingView = () => {
       {step === 'oauth' && selectedProvider ? (
         <OAuthStep
           authUrl={oauthAuthUrl}
+          authorizationCode={oauthAuthorizationCode}
           clientId={oauthClientId}
+          displayName={oauthDisplayName}
+          email={oauthEmail}
+          onAuthorizationCodeChange={setOauthAuthorizationCode}
           onBack={() => setStep('provider')}
           onClientIdChange={setOauthClientId}
+          onDisplayNameChange={setOauthDisplayName}
           onContinue={() => setStep('test')}
+          onEmailChange={setOauthEmail}
           onPrepare={handlePrepareOAuth}
           providerName={selectedProvider.title}
           status={oauthStatus}
