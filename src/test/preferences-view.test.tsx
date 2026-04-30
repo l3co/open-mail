@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '@/App';
@@ -34,6 +34,7 @@ describe('preferences view', () => {
   beforeEach(() => {
     setTauriRuntime(false);
     tauriCoreApi.invoke.mockReset();
+    vi.stubGlobal('confirm', vi.fn(() => true));
   });
 
   it('renders all seven preference sections on the dedicated route', async () => {
@@ -149,5 +150,82 @@ describe('preferences view', () => {
     });
 
     expect(usePreferencesStore.getState().checkForUpdates).toBe(true);
+  });
+
+  it('removes an account through the desktop backend after confirmation', async () => {
+    setTauriRuntime(true);
+    tauriCoreApi.invoke.mockImplementation(async (command) => {
+      if (command === 'get_config') {
+        return {
+          language: 'English',
+          defaultAccountId: 'acc_demo',
+          markAsReadOnOpen: true,
+          showSnippets: true,
+          autoLoadImages: false,
+          includeSignatureInReplies: true,
+          requestReadReceipts: false,
+          undoSendDelaySeconds: 5,
+          launchAtLogin: true,
+          checkForUpdates: true,
+          theme: 'system',
+          fontSize: 16,
+          layoutMode: 'split',
+          density: 'comfortable',
+          threadPanelWidth: 58,
+          notificationsEnabled: true,
+          notificationSound: true,
+          notificationScope: 'inbox',
+          quietHoursStart: '',
+          quietHoursEnd: '',
+          developerToolsEnabled: false,
+          logLevel: 'info'
+        };
+      }
+
+      if (command === 'remove_account' || command === 'update_config') {
+        return undefined;
+      }
+
+      throw new Error(`unexpected command ${command}`);
+    });
+    useAccountStore.setState({
+      accounts: [
+        {
+          id: 'acc_demo',
+          provider: 'Gmail',
+          email: 'leco@example.com',
+          displayName: 'Open Mail Demo'
+        },
+        {
+          id: 'acc_ops',
+          provider: 'Outlook',
+          email: 'ops@example.com',
+          displayName: 'Operations'
+        }
+      ],
+      selectedAccountId: 'acc_demo'
+    });
+
+    window.history.pushState({}, '', '/preferences');
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    const accountsSection = await screen.findByRole('heading', { name: 'Accounts' });
+    const accountCard = within(accountsSection.closest('section') ?? document.body).getByText('Operations').closest('article');
+    expect(accountCard).not.toBeNull();
+
+    fireEvent.click(within(accountCard as HTMLElement).getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => {
+      const removeCall = tauriCoreApi.invoke.mock.calls.find(([command]) => command === 'remove_account');
+      expect(removeCall).toEqual(['remove_account', { accountId: 'acc_ops' }, undefined]);
+    });
+
+    expect(useAccountStore.getState().accounts).toHaveLength(1);
+    expect(screen.queryByText('Operations')).not.toBeInTheDocument();
   });
 });

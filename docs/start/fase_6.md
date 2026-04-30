@@ -328,11 +328,11 @@ pub async fn update_account(state: State<'_, AppState>, account: Account) -> Res
 - [x] Todas as 7 secoes renderizam
 - [x] Mudancas aplicadas em tempo real (sem restart)
 - [x] Config persistida no backend
-- [ ] Remover conta funciona (com confirmacao)
+- [x] Remover conta funciona (com confirmacao)
 - [x] Tema muda imediatamente
 - [ ] Launch at login funciona (macOS, Linux, Windows)
 
-> Status: a rota de `Preferences` agora existe fora do shell do mailbox com layout dedicado, navegação lateral e as 7 seções renderizadas. O app já hidrata e salva o snapshot de preferências no backend Tauri/SQLite no runtime desktop, incluindo conta padrão, tema, layout e largura do painel, enquanto as integrações de sistema mais específicas ainda ficam para os próximos cortes.
+> Status: a rota de `Preferences` agora existe fora do shell do mailbox com layout dedicado, navegação lateral e as 7 seções renderizadas. O app já hidrata e salva o snapshot de preferências no backend Tauri/SQLite no runtime desktop, incluindo conta padrão, tema, layout e largura do painel, e a remoção de conta também passou a limpar conta + credenciais persistidas via confirmação. O item realmente aberto nesta frente agora é a integração de `launch at login` com o sistema operacional.
 
 ---
 

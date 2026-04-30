@@ -363,6 +363,49 @@ async fn list_accounts_for_state(state: &AppState) -> Result<Vec<Account>, Strin
         .map_err(|error| error.to_string())
 }
 
+async fn remove_account_for_state(state: &AppState, account_id: &str) -> Result<(), String> {
+    let account = state
+        .account_repo
+        .find_by_id(account_id)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| format!("account {account_id} not found"))?;
+
+    if !matches!(account.sync_state, SyncState::NotStarted) {
+        state
+            .sync_manager
+            .stop_sync(account_id)
+            .await
+            .map_err(|error| error.to_string())?;
+    }
+
+    state
+        .account_repo
+        .delete(account_id)
+        .await
+        .map_err(|error| error.to_string())?;
+    state
+        .credential_store
+        .delete(account_id)
+        .map_err(|error| error.to_string())?;
+
+    let mut config = state
+        .config_repo
+        .get()
+        .await
+        .map_err(|error| error.to_string())?;
+    if config.default_account_id.as_deref() == Some(account_id) {
+        config.default_account_id = None;
+        state
+            .config_repo
+            .save(&config)
+            .await
+            .map_err(|error| error.to_string())?;
+    }
+
+    Ok(())
+}
+
 fn password_credentials(request: &ConnectionCredentialsRequest) -> crate::infrastructure::sync::Credentials {
     crate::infrastructure::sync::Credentials::Password {
         username: request.username.trim().to_string(),
@@ -1253,6 +1296,11 @@ pub async fn add_account(
 }
 
 #[tauri::command]
+pub async fn remove_account(state: State<'_, AppState>, account_id: String) -> Result<(), String> {
+    remove_account_for_state(&state, &account_id).await
+}
+
+#[tauri::command]
 pub async fn complete_oauth_account(
     state: State<'_, AppState>,
     request: CompleteOAuthAccountRequest,
@@ -1777,9 +1825,10 @@ mod tests {
         get_config_for_state, get_message_for_state, get_sync_status_detail_for_state,
         get_sync_status_for_state, list_drafts_for_state, list_messages_for_state,
         list_threads_for_state, mailbox_overview_for_state, mark_messages_read_for_state,
-        save_draft_for_state, search_threads_for_state, seed_demo_data, start_sync_for_state,
-        stop_sync_for_state, test_imap_connection_for_state, test_smtp_connection_for_state,
-        update_config_for_state, validate_external_url, AddAccountRequest,
+        remove_account_for_state, save_draft_for_state, search_threads_for_state,
+        seed_demo_data, start_sync_for_state, stop_sync_for_state,
+        test_imap_connection_for_state, test_smtp_connection_for_state, update_config_for_state,
+        validate_external_url, AddAccountRequest,
         BuildOAuthAuthorizationUrlRequest, CompleteOAuthAccountRequest,
         ConnectionCredentialsRequest, EnqueueOutboxMessageRequest, SaveDraftRequest,
         TestMailConnectionRequest,
@@ -1808,7 +1857,7 @@ mod tests {
                 },
                 Database,
             },
-            sync::{InMemoryMailTaskQueue, MailAddress, SyncManager},
+            sync::{Credentials, InMemoryMailTaskQueue, MailAddress, SyncManager},
         },
         AppState,
     };
@@ -1928,6 +1977,61 @@ mod tests {
 
         let persisted = get_config_for_state(&state).await.unwrap();
         assert_eq!(persisted, updated);
+    }
+
+    #[tokio::test]
+    async fn remove_account_cleans_up_backend_state() {
+        let state = build_test_state();
+        let request = TestMailConnectionRequest {
+            settings: crate::domain::models::account::ConnectionSettings {
+                imap_host: "imap.example.com".into(),
+                imap_port: 993,
+                imap_security: crate::domain::models::account::SecurityType::Ssl,
+                smtp_host: "smtp.example.com".into(),
+                smtp_port: 587,
+                smtp_security: crate::domain::models::account::SecurityType::StartTls,
+            },
+            credentials: ConnectionCredentialsRequest {
+                username: "remove@example.com".into(),
+                password: "secret".into(),
+            },
+        };
+
+        let account = add_account_for_state(
+            &state,
+            AddAccountRequest {
+                name: "Remove Me".into(),
+                email: "remove@example.com".into(),
+                provider: AccountProvider::Imap,
+                settings: request.settings,
+                credentials: request.credentials,
+            },
+        )
+        .await
+        .unwrap();
+
+        update_config_for_state(
+            &state,
+            AppConfig {
+                default_account_id: Some(account.id.clone()),
+                ..AppConfig::default()
+            },
+        )
+        .await
+        .unwrap();
+        assert!(matches!(
+            state.credential_store.get(&account.id).unwrap(),
+            Some(Credentials::Password { .. })
+        ));
+
+        remove_account_for_state(&state, &account.id).await.unwrap();
+
+        assert!(state.account_repo.find_by_id(&account.id).await.unwrap().is_none());
+        assert_eq!(state.credential_store.get(&account.id).unwrap(), None);
+        assert_eq!(
+            get_config_for_state(&state).await.unwrap().default_account_id,
+            None
+        );
     }
 
     #[tokio::test]

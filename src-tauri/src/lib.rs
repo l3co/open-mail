@@ -11,7 +11,7 @@ use commands::{
     force_sync, get_config, get_message, get_sync_status, get_sync_status_detail, health_check,
     list_accounts, list_drafts, list_folders, list_messages, list_signatures, list_threads,
     mailbox_overview, mark_messages_read, mark_messages_unread, open_external_url,
-    save_account_credentials, save_draft, save_signature, search_threads,
+    remove_account, save_account_credentials, save_draft, save_signature, search_threads,
     set_default_signature, start_sync, stop_sync, test_imap_connection, test_smtp_connection,
     update_config,
 };
@@ -91,6 +91,7 @@ pub fn run() {
             list_accounts,
             autodiscover_settings,
             add_account,
+            remove_account,
             complete_oauth_account,
             list_folders,
             list_drafts,

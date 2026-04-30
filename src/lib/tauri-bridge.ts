@@ -34,7 +34,8 @@ const invokeOrThrow = async <T>(command: string, args?: Record<string, unknown>)
 export const api = {
   accounts: {
     list: () => invokeOrThrow<AccountRecordResponse[]>('list_accounts'),
-    add: (request: AddAccountRequest) => invokeOrThrow<AccountRecordResponse>('add_account', { request })
+    add: (request: AddAccountRequest) => invokeOrThrow<AccountRecordResponse>('add_account', { request }),
+    remove: (accountId: string) => invokeOrThrow<void>('remove_account', { accountId })
   },
   mailbox: {
     overview: () => invokeOrThrow<MailboxOverview>('mailbox_overview'),

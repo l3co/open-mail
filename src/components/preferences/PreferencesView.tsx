@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { builtInThemes, type ThemeId } from '@lib/themes';
+import { api, tauriRuntime } from '@lib/tauri-bridge';
 import { useAccountStore } from '@stores/useAccountStore';
 import { hydratePreferencesStore, savePreferencesToBackend } from '@stores/usePreferencesStore';
 import { useShortcutStore } from '@stores/useShortcutStore';
 import { usePreferencesStore } from '@stores/usePreferencesStore';
 import { useSignatureStore } from '@stores/useSignatureStore';
 import { useUIStore } from '@stores/useUIStore';
-import { tauriRuntime } from '@lib/tauri-bridge';
 
 const sections = [
   { id: 'general', title: 'General' },
@@ -107,7 +107,7 @@ export const PreferencesView = () => {
     selectAccount(accountId);
   };
 
-  const handleRemoveAccount = (accountId: string) => {
+  const handleRemoveAccount = async (accountId: string) => {
     const account = availableAccounts.find((candidate) => candidate.id === accountId);
     if (!account) {
       return;
@@ -117,9 +117,27 @@ export const PreferencesView = () => {
       return;
     }
 
+    if (tauriRuntime.isAvailable()) {
+      setBackendStatus('saving');
+      setBackendMessage(null);
+
+      try {
+        await api.accounts.remove(accountId);
+      } catch (error) {
+        setBackendStatus('error');
+        setBackendMessage(error instanceof Error ? error.message : 'Failed to remove account');
+        return;
+      }
+    }
+
     removeAccount(accountId);
     if (defaultAccountId === accountId) {
       setPreference('defaultAccountId', null);
+    }
+
+    setBackendStatus(tauriRuntime.isAvailable() ? 'saved' : 'idle');
+    if (tauriRuntime.isAvailable()) {
+      window.setTimeout(() => setBackendStatus((current) => (current === 'saved' ? 'idle' : current)), 1200);
     }
   };
 
