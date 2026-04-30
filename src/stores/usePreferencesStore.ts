@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { AppConfig } from '@lib/contracts';
+import { api, tauriRuntime } from '@lib/tauri-bridge';
+import { useUIStore } from '@stores/useUIStore';
 
 export type PreferenceDensity = 'comfortable' | 'compact';
 export type NotificationScope = 'inbox' | 'all';
@@ -25,12 +28,18 @@ type PreferencesState = {
   quietHoursEnd: string;
   developerToolsEnabled: boolean;
   logLevel: LogLevel;
+  replaceState: (nextState: PreferencesSnapshot) => void;
   setPreference: <Key extends keyof Omit<
     PreferencesState,
-    'setPreference' | 'resetPreferences'
+    'replaceState' | 'setPreference' | 'resetPreferences'
   >>(key: Key, value: PreferencesState[Key]) => void;
   resetPreferences: () => void;
 };
+
+export type PreferencesSnapshot = Omit<
+  PreferencesState,
+  'replaceState' | 'setPreference' | 'resetPreferences'
+>;
 
 const defaultPreferencesState = {
   language: 'English',
@@ -52,12 +61,13 @@ const defaultPreferencesState = {
   quietHoursEnd: '',
   developerToolsEnabled: false,
   logLevel: 'info'
-} satisfies Omit<PreferencesState, 'setPreference' | 'resetPreferences'>;
+} satisfies PreferencesSnapshot;
 
 export const usePreferencesStore = create<PreferencesState>()(
   persist(
     (set) => ({
       ...defaultPreferencesState,
+      replaceState: (nextState) => set(nextState),
       setPreference: (key, value) =>
         set({
           [key]: value
@@ -71,3 +81,73 @@ export const usePreferencesStore = create<PreferencesState>()(
 );
 
 export const defaultPreferences = defaultPreferencesState;
+
+const toPreferencesSnapshot = (config: AppConfig): PreferencesSnapshot => ({
+  language: config.language,
+  defaultAccountId: config.defaultAccountId,
+  markAsReadOnOpen: config.markAsReadOnOpen,
+  showSnippets: config.showSnippets,
+  autoLoadImages: config.autoLoadImages,
+  includeSignatureInReplies: config.includeSignatureInReplies,
+  requestReadReceipts: config.requestReadReceipts,
+  undoSendDelaySeconds: config.undoSendDelaySeconds,
+  launchAtLogin: config.launchAtLogin,
+  checkForUpdates: config.checkForUpdates,
+  fontSize: config.fontSize,
+  density: config.density as PreferenceDensity,
+  notificationsEnabled: config.notificationsEnabled,
+  notificationSound: config.notificationSound,
+  notificationScope: config.notificationScope as NotificationScope,
+  quietHoursStart: config.quietHoursStart,
+  quietHoursEnd: config.quietHoursEnd,
+  developerToolsEnabled: config.developerToolsEnabled,
+  logLevel: config.logLevel as LogLevel
+});
+
+export const hydratePreferencesStore = async () => {
+  if (!tauriRuntime.isAvailable()) {
+    return;
+  }
+
+  const config = await api.config.get();
+  usePreferencesStore.getState().replaceState(toPreferencesSnapshot(config));
+  useUIStore.setState({
+    themeId: config.theme as 'system' | 'dark' | 'light',
+    layoutMode: config.layoutMode as 'split' | 'list',
+    threadPanelWidth: config.threadPanelWidth
+  });
+};
+
+export const savePreferencesToBackend = async () => {
+  if (!tauriRuntime.isAvailable()) {
+    return;
+  }
+
+  const preferences = usePreferencesStore.getState();
+  const ui = useUIStore.getState();
+
+  await api.config.update({
+    language: preferences.language,
+    defaultAccountId: preferences.defaultAccountId,
+    markAsReadOnOpen: preferences.markAsReadOnOpen,
+    showSnippets: preferences.showSnippets,
+    autoLoadImages: preferences.autoLoadImages,
+    includeSignatureInReplies: preferences.includeSignatureInReplies,
+    requestReadReceipts: preferences.requestReadReceipts,
+    undoSendDelaySeconds: preferences.undoSendDelaySeconds,
+    launchAtLogin: preferences.launchAtLogin,
+    checkForUpdates: preferences.checkForUpdates,
+    theme: ui.themeId,
+    fontSize: preferences.fontSize,
+    layoutMode: ui.layoutMode,
+    density: preferences.density,
+    threadPanelWidth: ui.threadPanelWidth,
+    notificationsEnabled: preferences.notificationsEnabled,
+    notificationSound: preferences.notificationSound,
+    notificationScope: preferences.notificationScope,
+    quietHoursStart: preferences.quietHoursStart,
+    quietHoursEnd: preferences.quietHoursEnd,
+    developerToolsEnabled: preferences.developerToolsEnabled,
+    logLevel: preferences.logLevel
+  });
+};

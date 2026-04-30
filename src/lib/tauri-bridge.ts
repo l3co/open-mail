@@ -1,6 +1,7 @@
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import type {
   AccountRecordResponse,
+  AppConfig,
   AddAccountRequest,
   BuildOAuthAuthorizationUrlRequest,
   ConnectionSettings,
@@ -90,6 +91,10 @@ export const api = {
           accountId: accountId ?? null
         }
       })
+  },
+  config: {
+    get: () => invokeOrThrow<AppConfig>('get_config'),
+    update: (config: AppConfig) => invokeOrThrow<void>('update_config', { config })
   },
   auth: {
     buildOAuthAuthorizationUrl: (request: BuildOAuthAuthorizationUrlRequest) =>

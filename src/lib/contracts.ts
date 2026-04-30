@@ -172,6 +172,31 @@ export type SignatureSettings = {
   defaultSignatureIdsByAccountId: Record<string, string | null>;
 };
 
+export type AppConfig = {
+  language: string;
+  defaultAccountId: string | null;
+  markAsReadOnOpen: boolean;
+  showSnippets: boolean;
+  autoLoadImages: boolean;
+  includeSignatureInReplies: boolean;
+  requestReadReceipts: boolean;
+  undoSendDelaySeconds: number;
+  launchAtLogin: boolean;
+  checkForUpdates: boolean;
+  theme: string;
+  fontSize: number;
+  layoutMode: string;
+  density: string;
+  threadPanelWidth: number;
+  notificationsEnabled: boolean;
+  notificationSound: boolean;
+  notificationScope: string;
+  quietHoursStart: string;
+  quietHoursEnd: string;
+  developerToolsEnabled: boolean;
+  logLevel: string;
+};
+
 export type ThreadSummary = {
   id: string;
   subject: string;

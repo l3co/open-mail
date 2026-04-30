@@ -1,11 +1,13 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { builtInThemes, type ThemeId } from '@lib/themes';
 import { useAccountStore } from '@stores/useAccountStore';
+import { hydratePreferencesStore, savePreferencesToBackend } from '@stores/usePreferencesStore';
 import { useShortcutStore } from '@stores/useShortcutStore';
 import { usePreferencesStore } from '@stores/usePreferencesStore';
 import { useSignatureStore } from '@stores/useSignatureStore';
 import { useUIStore } from '@stores/useUIStore';
+import { tauriRuntime } from '@lib/tauri-bridge';
 
 const sections = [
   { id: 'general', title: 'General' },
@@ -28,6 +30,9 @@ const prettifyShortcutAction = (value: string) =>
 
 export const PreferencesView = () => {
   const navigate = useNavigate();
+  const [backendStatus, setBackendStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('idle');
+  const [backendMessage, setBackendMessage] = useState<string | null>(null);
+  const hasHydratedRef = useRef(false);
   const accounts = useAccountStore((state) => state.accounts);
   const selectedAccountId = useAccountStore((state) => state.selectedAccountId);
   const selectAccount = useAccountStore((state) => state.selectAccount);
@@ -118,13 +123,100 @@ export const PreferencesView = () => {
     }
   };
 
+  useEffect(() => {
+    if (!tauriRuntime.isAvailable()) {
+      hasHydratedRef.current = true;
+      return;
+    }
+
+    let isActive = true;
+    setBackendStatus('loading');
+    setBackendMessage(null);
+
+    void hydratePreferencesStore()
+      .then(() => {
+        if (!isActive) {
+          return;
+        }
+
+        hasHydratedRef.current = true;
+        setBackendStatus('idle');
+      })
+      .catch((error: unknown) => {
+        if (!isActive) {
+          return;
+        }
+
+        hasHydratedRef.current = true;
+        setBackendStatus('error');
+        setBackendMessage(error instanceof Error ? error.message : 'Failed to load preferences');
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!tauriRuntime.isAvailable() || !hasHydratedRef.current) {
+      return;
+    }
+
+    setBackendStatus('saving');
+    setBackendMessage(null);
+    const timeoutId = window.setTimeout(() => {
+      void savePreferencesToBackend()
+        .then(() => {
+          setBackendStatus('saved');
+          window.setTimeout(() => setBackendStatus((current) => (current === 'saved' ? 'idle' : current)), 1200);
+        })
+        .catch((error: unknown) => {
+          setBackendStatus('error');
+          setBackendMessage(error instanceof Error ? error.message : 'Failed to save preferences');
+        });
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    autoLoadImages,
+    checkForUpdates,
+    defaultAccountId,
+    density,
+    developerToolsEnabled,
+    fontSize,
+    includeSignatureInReplies,
+    language,
+    launchAtLogin,
+    layoutMode,
+    logLevel,
+    markAsReadOnOpen,
+    notificationScope,
+    notificationSound,
+    notificationsEnabled,
+    quietHoursEnd,
+    quietHoursStart,
+    requestReadReceipts,
+    showSnippets,
+    themeId,
+    threadPanelWidth,
+    undoSendDelaySeconds
+  ]);
+
   return (
     <main className="preferences-shell" aria-label="Open Mail preferences">
       <div className="preferences-header">
         <div>
           <p className="eyebrow">Phase 6</p>
           <h1>Preferences</h1>
-          <p>Adjust the app in one place. Theme and layout changes apply immediately, and the rest of the settings stay persisted locally until the backend config layer lands.</p>
+          <p>Adjust the app in one place. Theme and layout changes apply immediately, and desktop settings now sync through the Tauri backend automatically.</p>
+          {tauriRuntime.isAvailable() ? (
+            <p className="preferences-note">
+              {backendStatus === 'loading' ? 'Loading desktop preferences…' : null}
+              {backendStatus === 'saving' ? 'Saving desktop preferences…' : null}
+              {backendStatus === 'saved' ? 'Desktop preferences saved.' : null}
+              {backendStatus === 'error' ? backendMessage ?? 'Desktop preferences failed to sync.' : null}
+            </p>
+          ) : null}
         </div>
         <button className="preferences-close" onClick={() => navigate('/')} type="button">
           Close

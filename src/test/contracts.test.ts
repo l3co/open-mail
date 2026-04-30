@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type {
   BuildOAuthAuthorizationUrlRequest,
+  AppConfig,
   ConnectionSettings,
   CompleteOAuthAccountRequest,
   DomainEvent,
@@ -166,5 +167,35 @@ describe('contracts', () => {
 
     expect(settings.imapHost).toContain('fastmail');
     expect(settings.smtpSecurity).toBe('Ssl');
+  });
+
+  it('supports desktop preferences config contracts for phase 6', () => {
+    const config: AppConfig = {
+      language: 'Portuguese',
+      defaultAccountId: 'acc_demo',
+      markAsReadOnOpen: true,
+      showSnippets: true,
+      autoLoadImages: false,
+      includeSignatureInReplies: true,
+      requestReadReceipts: false,
+      undoSendDelaySeconds: 5,
+      launchAtLogin: true,
+      checkForUpdates: true,
+      theme: 'system',
+      fontSize: 16,
+      layoutMode: 'split',
+      density: 'comfortable',
+      threadPanelWidth: 58,
+      notificationsEnabled: true,
+      notificationSound: true,
+      notificationScope: 'inbox',
+      quietHoursStart: '',
+      quietHoursEnd: '',
+      developerToolsEnabled: false,
+      logLevel: 'info'
+    };
+
+    expect(config.theme).toBe('system');
+    expect(config.threadPanelWidth).toBeGreaterThan(40);
   });
 });

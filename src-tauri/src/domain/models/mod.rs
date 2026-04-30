@@ -1,5 +1,6 @@
 pub mod account;
 pub mod attachment;
+pub mod config;
 pub mod contact;
 pub mod folder;
 pub mod label;

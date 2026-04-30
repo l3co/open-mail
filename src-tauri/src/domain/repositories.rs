@@ -6,6 +6,7 @@ use crate::domain::{
     errors::DomainError,
     models::{
         account::Account,
+        config::AppConfig,
         contact::Contact,
         folder::{Folder, FolderRole},
         message::Message,
@@ -115,4 +116,10 @@ pub trait SignatureRepository: Send + Sync {
         signature_id: Option<&str>,
         account_id: Option<&str>,
     ) -> Result<(), DomainError>;
+}
+
+#[async_trait]
+pub trait ConfigRepository: Send + Sync {
+    async fn get(&self) -> Result<AppConfig, DomainError>;
+    async fn save(&self, config: &AppConfig) -> Result<(), DomainError>;
 }

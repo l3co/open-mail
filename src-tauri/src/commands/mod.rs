@@ -6,6 +6,7 @@ use uuid::Uuid;
 use crate::{
     domain::models::{
         account::{Account, AccountProvider, ConnectionSettings, SecurityType, SyncState},
+        config::AppConfig,
         contact::Contact,
         folder::{Folder, FolderRole},
         message::Message,
@@ -279,6 +280,22 @@ pub struct SaveSignatureRequest {
 pub struct SetDefaultSignatureRequest {
     pub signature_id: Option<String>,
     pub account_id: Option<String>,
+}
+
+async fn get_config_for_state(state: &AppState) -> Result<AppConfig, String> {
+    state
+        .config_repo
+        .get()
+        .await
+        .map_err(|error| error.to_string())
+}
+
+async fn update_config_for_state(state: &AppState, config: AppConfig) -> Result<(), String> {
+    state
+        .config_repo
+        .save(&config)
+        .await
+        .map_err(|error| error.to_string())
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -588,6 +605,19 @@ async fn set_default_signature_for_state(
         .set_default(request.signature_id.as_deref(), request.account_id.as_deref())
         .await
         .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String> {
+    get_config_for_state(&state).await
+}
+
+#[tauri::command]
+pub async fn update_config(
+    state: State<'_, AppState>,
+    config: AppConfig,
+) -> Result<(), String> {
+    update_config_for_state(&state, config).await
 }
 
 fn download_attachment_file(
@@ -1744,28 +1774,31 @@ mod tests {
         build_oauth_authorization_url_for_request,
         complete_oauth_account_for_state, delete_draft_for_state, download_attachment_file,
         enqueue_outbox_message_for_state, flush_outbox_for_state, force_sync_for_state,
-        get_message_for_state, get_sync_status_detail_for_state, get_sync_status_for_state,
-        list_drafts_for_state, list_messages_for_state, list_threads_for_state,
-        mailbox_overview_for_state, mark_messages_read_for_state, save_draft_for_state,
-        search_threads_for_state, seed_demo_data, start_sync_for_state, stop_sync_for_state,
-        test_imap_connection_for_state, test_smtp_connection_for_state, validate_external_url,
-        AddAccountRequest, BuildOAuthAuthorizationUrlRequest, CompleteOAuthAccountRequest,
+        get_config_for_state, get_message_for_state, get_sync_status_detail_for_state,
+        get_sync_status_for_state, list_drafts_for_state, list_messages_for_state,
+        list_threads_for_state, mailbox_overview_for_state, mark_messages_read_for_state,
+        save_draft_for_state, search_threads_for_state, seed_demo_data, start_sync_for_state,
+        stop_sync_for_state, test_imap_connection_for_state, test_smtp_connection_for_state,
+        update_config_for_state, validate_external_url, AddAccountRequest,
+        BuildOAuthAuthorizationUrlRequest, CompleteOAuthAccountRequest,
         ConnectionCredentialsRequest, EnqueueOutboxMessageRequest, SaveDraftRequest,
         TestMailConnectionRequest,
     };
     use crate::{
         domain::models::{
             account::{AccountProvider, SyncState},
+            config::AppConfig,
             outbox::OutboxStatus,
         },
         domain::repositories::{
-            AccountRepository, FolderRepository, MessageRepository, OutboxRepository,
-            SignatureRepository, SyncCursorRepository, ThreadRepository,
+            AccountRepository, ConfigRepository, FolderRepository, MessageRepository,
+            OutboxRepository, SignatureRepository, SyncCursorRepository, ThreadRepository,
         },
         infrastructure::{
             database::{
                 repositories::{
                     account_repository::SqliteAccountRepository,
+                    config_repository::SqliteConfigRepository,
                     folder_repository::SqliteFolderRepository,
                     message_repository::SqliteMessageRepository,
                     outbox_repository::SqliteOutboxRepository,
@@ -1806,6 +1839,8 @@ mod tests {
             Arc::new(SqliteOutboxRepository::new(db.clone()));
         let signature_repo: Arc<dyn SignatureRepository> =
             Arc::new(SqliteSignatureRepository::new(db.clone()));
+        let config_repo: Arc<dyn ConfigRepository> =
+            Arc::new(SqliteConfigRepository::new(db.clone()));
         let sync_cursor_repo: Arc<dyn SyncCursorRepository> =
             Arc::new(SqliteSyncCursorRepository::new(db.clone()));
         let sync_manager = Arc::new(SyncManager::new(
@@ -1824,6 +1859,7 @@ mod tests {
             message_repo,
             outbox_repo,
             signature_repo,
+            config_repo,
             credential_store: Arc::new(
                 crate::infrastructure::sync::InMemoryCredentialStore::default(),
             ),
@@ -1853,6 +1889,45 @@ mod tests {
         assert_eq!(overview.threads[0].id, "thr_1");
         assert!(overview.threads[0].has_attachments);
         assert_eq!(overview.threads[0].message_count, 3);
+    }
+
+    #[tokio::test]
+    async fn preferences_config_roundtrips_through_commands() {
+        let state = build_test_state();
+
+        let initial = get_config_for_state(&state).await.unwrap();
+        assert_eq!(initial.language, "English");
+        assert_eq!(initial.theme, "system");
+
+        let updated = AppConfig {
+            language: "Portuguese".into(),
+            default_account_id: Some("acc_demo".into()),
+            mark_as_read_on_open: false,
+            show_snippets: false,
+            auto_load_images: true,
+            include_signature_in_replies: false,
+            request_read_receipts: true,
+            undo_send_delay_seconds: 15,
+            launch_at_login: false,
+            check_for_updates: false,
+            theme: "light".into(),
+            font_size: 18,
+            layout_mode: "list".into(),
+            density: "compact".into(),
+            thread_panel_width: 66,
+            notifications_enabled: false,
+            notification_sound: false,
+            notification_scope: "all".into(),
+            quiet_hours_start: "22:00".into(),
+            quiet_hours_end: "07:00".into(),
+            developer_tools_enabled: true,
+            log_level: "debug".into(),
+        };
+
+        update_config_for_state(&state, updated.clone()).await.unwrap();
+
+        let persisted = get_config_for_state(&state).await.unwrap();
+        assert_eq!(persisted, updated);
     }
 
     #[tokio::test]

@@ -12,6 +12,7 @@ const INITIAL_MIGRATION: &str = include_str!("migrations/001_initial_schema.sql"
 const SYNC_CURSOR_MIGRATION: &str = include_str!("migrations/002_sync_cursors.sql");
 const OUTBOX_MESSAGES_MIGRATION: &str = include_str!("migrations/004_outbox_messages.sql");
 const SIGNATURES_MIGRATION: &str = include_str!("migrations/005_signatures.sql");
+const APP_CONFIG_MIGRATION: &str = include_str!("migrations/006_app_config.sql");
 pub mod repositories;
 
 #[derive(Debug, Clone)]
@@ -51,6 +52,9 @@ impl Database {
             .map_err(|error| DomainError::Database(error.to_string()))?;
         connection
             .execute_batch(SIGNATURES_MIGRATION)
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+        connection
+            .execute_batch(APP_CONFIG_MIGRATION)
             .map_err(|error| DomainError::Database(error.to_string()))?;
         ensure_column(&connection, "sync_cursors", "uid_validity", "INTEGER")?;
         ensure_column(&connection, "sync_cursors", "last_seen_uid", "INTEGER")?;
@@ -114,6 +118,7 @@ mod tests {
     use super::{
         repositories::{
             account_repository::SqliteAccountRepository, folder_repository::SqliteFolderRepository,
+            config_repository::SqliteConfigRepository,
             message_repository::SqliteMessageRepository, outbox_repository::SqliteOutboxRepository,
             signature_repository::SqliteSignatureRepository,
             sync_cursor_repository::SqliteSyncCursorRepository,
@@ -124,6 +129,7 @@ mod tests {
     use crate::domain::{
         models::account::{Account, AccountProvider, ConnectionSettings, SecurityType, SyncState},
         models::attachment::Attachment,
+        models::config::AppConfig,
         models::contact::Contact,
         models::folder::{Folder, FolderRole},
         models::message::Message,
@@ -132,6 +138,7 @@ mod tests {
         models::sync_cursor::SyncCursor,
         models::thread::Thread,
         repositories::AccountRepository,
+        repositories::ConfigRepository,
         repositories::FolderRepository,
         repositories::MessageRepository,
         repositories::OutboxRepository,
@@ -175,6 +182,48 @@ mod tests {
             created_at: timestamp,
             updated_at: timestamp,
         }
+    }
+
+    #[tokio::test]
+    async fn persists_app_config() {
+        let path = unique_database_path("config");
+        let database = Database::new(&path).unwrap();
+        database.run_migrations().unwrap();
+        let config_repo = SqliteConfigRepository::new(database);
+
+        let initial = config_repo.get().await.unwrap();
+        assert_eq!(initial.language, "English");
+        assert_eq!(initial.theme, "system");
+
+        let config = AppConfig {
+            language: "Portuguese".into(),
+            default_account_id: Some("acc_1".into()),
+            mark_as_read_on_open: false,
+            show_snippets: false,
+            auto_load_images: true,
+            include_signature_in_replies: false,
+            request_read_receipts: true,
+            undo_send_delay_seconds: 10,
+            launch_at_login: false,
+            check_for_updates: false,
+            theme: "light".into(),
+            font_size: 18,
+            layout_mode: "list".into(),
+            density: "compact".into(),
+            thread_panel_width: 64,
+            notifications_enabled: false,
+            notification_sound: false,
+            notification_scope: "all".into(),
+            quiet_hours_start: "22:00".into(),
+            quiet_hours_end: "07:00".into(),
+            developer_tools_enabled: true,
+            log_level: "debug".into(),
+        };
+
+        config_repo.save(&config).await.unwrap();
+
+        let persisted = config_repo.get().await.unwrap();
+        assert_eq!(persisted, config);
     }
 
     fn sample_folder(id: &str, role: FolderRole) -> Folder {

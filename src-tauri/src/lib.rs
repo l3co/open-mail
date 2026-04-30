@@ -8,21 +8,23 @@ use std::{path::PathBuf, sync::Arc};
 use commands::{
     add_account, autodiscover_settings, build_oauth_authorization_url, complete_oauth_account,
     delete_draft, delete_signature, download_attachment, enqueue_outbox_message, flush_outbox,
-    force_sync, get_message, get_sync_status, get_sync_status_detail, health_check,
+    force_sync, get_config, get_message, get_sync_status, get_sync_status_detail, health_check,
     list_accounts, list_drafts, list_folders, list_messages, list_signatures, list_threads,
     mailbox_overview, mark_messages_read, mark_messages_unread, open_external_url,
     save_account_credentials, save_draft, save_signature, search_threads,
     set_default_signature, start_sync, stop_sync, test_imap_connection, test_smtp_connection,
+    update_config,
 };
 use domain::events::DomainEvent;
 use domain::repositories::{
-    AccountRepository, FolderRepository, MessageRepository, OutboxRepository, SyncCursorRepository,
-    SignatureRepository, ThreadRepository,
+    AccountRepository, ConfigRepository, FolderRepository, MessageRepository, OutboxRepository,
+    SignatureRepository, SyncCursorRepository, ThreadRepository,
 };
 use infrastructure::{
     database::{
         repositories::{
             account_repository::SqliteAccountRepository, folder_repository::SqliteFolderRepository,
+            config_repository::SqliteConfigRepository,
             message_repository::SqliteMessageRepository, outbox_repository::SqliteOutboxRepository,
             signature_repository::SqliteSignatureRepository,
             sync_cursor_repository::SqliteSyncCursorRepository,
@@ -45,6 +47,7 @@ pub struct AppState {
     pub message_repo: Arc<dyn MessageRepository>,
     pub outbox_repo: Arc<dyn OutboxRepository>,
     pub signature_repo: Arc<dyn SignatureRepository>,
+    pub config_repo: Arc<dyn ConfigRepository>,
     pub credential_store: Arc<dyn CredentialStore>,
     pub task_queue: Arc<dyn MailTaskQueue>,
     pub sync_cursor_repo: Arc<dyn SyncCursorRepository>,
@@ -107,9 +110,11 @@ pub fn run() {
             save_draft,
             delete_draft,
             list_signatures,
+            get_config,
             save_signature,
             delete_signature,
             set_default_signature,
+            update_config,
             build_oauth_authorization_url,
             test_imap_connection,
             test_smtp_connection,
@@ -136,6 +141,7 @@ fn build_app_state() -> Result<AppState, String> {
     let outbox_repo: Arc<dyn OutboxRepository> = Arc::new(SqliteOutboxRepository::new(db.clone()));
     let signature_repo: Arc<dyn SignatureRepository> =
         Arc::new(SqliteSignatureRepository::new(db.clone()));
+    let config_repo: Arc<dyn ConfigRepository> = Arc::new(SqliteConfigRepository::new(db.clone()));
     let credential_store_path = default_credential_store_path();
     let credential_store: Arc<dyn CredentialStore> =
         Arc::new(FileCredentialStore::new(&credential_store_path).map_err(|error| error.to_string())?);
@@ -158,6 +164,7 @@ fn build_app_state() -> Result<AppState, String> {
         message_repo,
         outbox_repo,
         signature_repo,
+        config_repo,
         credential_store,
         task_queue,
         sync_cursor_repo,
