@@ -293,6 +293,36 @@ describe('mailbox overview integration', () => {
     expect(within(threadList).getByText('Premium motion system approved')).toBeInTheDocument();
   });
 
+  it('shows independent sync status per account in the sidebar', async () => {
+    useAccountStore.setState({
+      accounts: [
+        {
+          id: 'acc_demo',
+          provider: 'Gmail',
+          email: 'leco@example.com',
+          displayName: 'Open Mail Demo'
+        },
+        {
+          id: 'acc_ops',
+          provider: 'Outlook',
+          email: 'ops@example.com',
+          displayName: 'Operations'
+        }
+      ],
+      selectedAccountId: 'acc_demo'
+    });
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    const configuredAccounts = await screen.findByLabelText('Configured accounts');
+    expect(await within(configuredAccounts).findByText('Sync syncing folders')).toBeInTheDocument();
+    expect(await within(configuredAccounts).findByText('Sync idling')).toBeInTheDocument();
+  });
+
   it('supports phase 3 thread action shortcuts with status feedback', async () => {
     render(
       <QueryClientProvider client={new QueryClient()}>

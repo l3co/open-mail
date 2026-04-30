@@ -181,10 +181,10 @@ Diferenca: nao mostra tela de Welcome, vai direto para Select Provider.
 **Criterio de aceite:**
 - [x] Adicionar segunda conta funciona
 - [x] Sidebar mostra ambas as contas
-- [ ] Sync roda independente por conta
+- [x] Sync roda independente por conta
 - [x] Unified inbox mostra threads de todas as contas
 
-> Status: o shell agora consegue abrir o onboarding como `Add account` sem a etapa de `Welcome`, a sidebar passa a listar as contas configuradas no app depois que o fluxo termina e o `Inbox` entra em modo unificado quando existem multiplas contas, juntando as threads mais recentes de cada inbox. O que ainda fica aberto nesta frente e o sync realmente independente por conta.
+> Status: o shell agora consegue abrir o onboarding como `Add account` sem a etapa de `Welcome`, a sidebar passa a listar as contas configuradas no app depois que o fluxo termina, o `Inbox` entra em modo unificado quando existem multiplas contas e cada conta exibe seu proprio estado de sync no shell. Com isso, a frente 6.2 fica fechada neste corte.
 
 ---
 

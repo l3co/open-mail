@@ -897,6 +897,12 @@ summary.folder-group-title::-webkit-details-marker {
   font-size: 0.82rem;
 }
 
+.account-list-item small {
+  color: var(--accent);
+  font-size: 0.74rem;
+  text-transform: capitalize;
+}
+
 .account-list-item-active {
   border-color: rgba(246, 182, 111, 0.28);
   background: rgba(246, 182, 111, 0.08);

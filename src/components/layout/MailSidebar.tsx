@@ -15,7 +15,7 @@ import {
   Trash2
 } from 'lucide-react';
 import openMailLogo from '@/assets/logo.svg';
-import type { FolderRecord } from '@lib/contracts';
+import type { FolderRecord, SyncStatusDetail } from '@lib/contracts';
 import type { AccountRecord } from '@stores/useAccountStore';
 
 type MailSidebarProps = {
@@ -32,6 +32,7 @@ type MailSidebarProps = {
   onSelectFolder: (folderId: string) => void;
   onToggleComposer: () => void;
   onToggleSidebar: () => void;
+  syncStatusByAccountId?: Record<string, SyncStatusDetail | null>;
 };
 
 const folderIconMap = {
@@ -63,11 +64,29 @@ export const MailSidebar = ({
   onAddAccount,
   onFlushOutbox,
   onSelectFolder,
+  syncStatusByAccountId = {},
   onToggleComposer,
   onToggleSidebar
 }: MailSidebarProps) => {
   const systemFolders = folders.filter((folder) => folder.role);
   const customFolders = folders.filter((folder) => !folder.role);
+  const formatSyncLabel = (accountId: string) => {
+    const detail = syncStatusByAccountId[accountId];
+
+    if (!detail) {
+      return 'Sync pending';
+    }
+
+    if (detail.state.kind === 'error') {
+      return 'Sync error';
+    }
+
+    if (detail.phase) {
+      return `Sync ${detail.phase.replaceAll('-', ' ')}`;
+    }
+
+    return detail.state.kind === 'running' ? 'Sync running' : 'Sync idle';
+  };
 
   return (
     <aside className="sidebar-panel">
@@ -206,6 +225,7 @@ export const MailSidebar = ({
             >
               <strong>{account.displayName}</strong>
               <span>{account.email}</span>
+              <small>{formatSyncLabel(account.id)}</small>
             </div>
           ))}
         </div>

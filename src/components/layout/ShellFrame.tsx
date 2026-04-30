@@ -50,6 +50,7 @@ type ShellFrameProps = {
   composerAccounts: AccountRecord[];
   composerAccountId: string;
   recipientSuggestions: string[];
+  syncStatusByAccountId?: Record<string, SyncStatusDetail | null>;
   isOutboxBusy: boolean;
   isMessagesLoading: boolean;
   isThreadsLoading?: boolean;
@@ -88,6 +89,7 @@ export const ShellFrame = ({
   composerAccounts,
   composerAccountId,
   recipientSuggestions,
+  syncStatusByAccountId,
   isOutboxBusy,
   isMessagesLoading,
   isThreadsLoading = false,
@@ -523,6 +525,7 @@ export const ShellFrame = ({
         onAddAccount={onAddAccount}
         onFlushOutbox={onFlushOutbox}
         onSelectFolder={onSelectFolder}
+        syncStatusByAccountId={syncStatusByAccountId}
         onToggleComposer={toggleComposer}
         onToggleSidebar={toggleSidebarAndCloseComposer}
       />

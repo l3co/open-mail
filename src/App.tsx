@@ -11,6 +11,7 @@ import { useDomainEvents } from '@hooks/useDomainEvents';
 import { useMailboxOverview } from '@hooks/useMailboxOverview';
 import { useSearchThreads } from '@hooks/useSearchThreads';
 import { useSyncStatusDetail } from '@hooks/useSyncStatusDetail';
+import { useSyncStatusMap } from '@hooks/useSyncStatusMap';
 import { useThreadMessages } from '@hooks/useThreadMessages';
 import { useThreads } from '@hooks/useThreads';
 import { useUnifiedInboxThreads } from '@hooks/useUnifiedInboxThreads';
@@ -242,6 +243,7 @@ const MailShell = () => {
   const selectedComposerAccount = composerAccounts.find((account) => account.id === selectedAccountId) ?? composerAccounts[0];
   const selectedFolder = mailbox?.folders.find((folder) => folder.id === selectedFolderId) ?? null;
   const isUnifiedInboxActive = composerAccounts.length > 1 && selectedFolder?.role === 'inbox';
+  const syncStatusMapQuery = useSyncStatusMap(composerAccounts.map((account) => account.id));
   const unifiedInboxQuery = useUnifiedInboxThreads({
     accounts: composerAccounts,
     fallbackThreads: runtimeAllThreads,
@@ -307,7 +309,7 @@ const MailShell = () => {
   );
   const selectedThread = threads.find((thread) => thread.id === selectedThreadId) ?? threads[0] ?? null;
   const messagesQuery = useThreadMessages(selectedThread?.id ?? null);
-  const syncStatusDetailQuery = useSyncStatusDetail(mailbox?.accountId ?? null);
+  const syncStatusDetailQuery = useSyncStatusDetail(selectedComposerAccount.id);
   const recipientSuggestions = useMemo(
     () => Array.from(new Set(runtimeAllThreads.flatMap((thread) => thread.participant_ids))).sort(),
     [runtimeAllThreads]
@@ -658,6 +660,7 @@ const MailShell = () => {
       messages={messagesQuery.data ?? []}
       selectedMessageId={selectedMessageId}
       syncStatusDetail={syncStatusDetailQuery.data ?? null}
+      syncStatusByAccountId={syncStatusMapQuery.data ?? {}}
       outboxStatus={outboxStatus}
       composerToast={composerToast}
       composerAccounts={composerAccounts}
@@ -667,7 +670,8 @@ const MailShell = () => {
       isMessagesLoading={
         searchThreadsQuery.isLoading ||
         messagesQuery.isLoading ||
-        syncStatusDetailQuery.isLoading
+        syncStatusDetailQuery.isLoading ||
+        syncStatusMapQuery.isLoading
       }
       isThreadsLoading={folderThreadsQuery.isLoading || searchThreadsQuery.isLoading || unifiedInboxQuery.isLoading}
       hasMoreThreads={!isSearchActive && !isUnifiedInboxActive && folderThreadsQuery.hasMore}
