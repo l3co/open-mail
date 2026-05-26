@@ -185,6 +185,7 @@ export const PreferencesView = () => {
   const preferencesNavRefs = useRef<Partial<Record<PreferencesSectionId, HTMLAnchorElement | null>>>({});
   const accountCardRefs = useRef<Record<string, HTMLElement | null>>({});
   const pluginCardRefs = useRef<Record<string, HTMLElement | null>>({});
+  const themeCardRefs = useRef<Partial<Record<ThemeId, HTMLButtonElement | null>>>({});
   const hasHydratedRef = useRef(false);
   useSyncExternalStore(pluginManager.subscribe, () => pluginManager.getRevision(), () => 0);
   const mailboxQuery = useMailboxOverview();
@@ -295,6 +296,7 @@ export const PreferencesView = () => {
     ]
   );
   const sectionNavOrder = useMemo(() => sections.map((section) => section.id), []);
+  const themeNavOrder = useMemo(() => themeOptions, []);
 
   const availableAccounts = useMemo(
     () =>
@@ -811,6 +813,56 @@ export const PreferencesView = () => {
       }
     };
 
+  const registerThemeCard = (theme: ThemeId) => (element: HTMLButtonElement | null) => {
+    themeCardRefs.current[theme] = element;
+  };
+
+  const moveThemeCardFocus = (currentTheme: ThemeId, offset: number) => {
+    const currentIndex = themeNavOrder.indexOf(currentTheme);
+
+    if (currentIndex === -1 || !themeNavOrder.length) {
+      return;
+    }
+
+    const nextIndex = (currentIndex + offset + themeNavOrder.length) % themeNavOrder.length;
+    const nextTheme = themeNavOrder[nextIndex];
+    themeCardRefs.current[nextTheme]?.focus();
+    setThemeId(nextTheme);
+  };
+
+  const focusThemeCardBoundary = (boundary: 'first' | 'last') => {
+    if (!themeNavOrder.length) {
+      return;
+    }
+
+    const targetTheme = boundary === 'first' ? themeNavOrder[0] : themeNavOrder[themeNavOrder.length - 1];
+    themeCardRefs.current[targetTheme]?.focus();
+    setThemeId(targetTheme);
+  };
+
+  const createThemeCardKeyDownHandler =
+    (theme: ThemeId) => (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        moveThemeCardFocus(theme, 1);
+      }
+
+      if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+        event.preventDefault();
+        moveThemeCardFocus(theme, -1);
+      }
+
+      if (event.key === 'Home') {
+        event.preventDefault();
+        focusThemeCardBoundary('first');
+      }
+
+      if (event.key === 'End') {
+        event.preventDefault();
+        focusThemeCardBoundary('last');
+      }
+    };
+
   return (
     <main className="preferences-shell" aria-label="Open Mail preferences">
       <div className="preferences-header">
@@ -935,12 +987,17 @@ export const PreferencesView = () => {
 
           <section className="preferences-section" id="appearance">
             <h2>Appearance</h2>
-            <div className="preferences-theme-grid">
+            <div aria-label="Theme selection" className="preferences-theme-grid" role="radiogroup">
               {themeOptions.map((option) => (
                 <button
+                  aria-checked={themeId === option}
                   className={themeId === option ? 'preferences-theme-card preferences-theme-card-active' : 'preferences-theme-card'}
                   key={option}
+                  onKeyDown={createThemeCardKeyDownHandler(option)}
                   onClick={() => setThemeId(option)}
+                  ref={registerThemeCard(option)}
+                  role="radio"
+                  tabIndex={themeId === option ? 0 : -1}
                   type="button"
                 >
                   <strong>{option === 'system' ? 'System' : builtInThemes[option].name}</strong>

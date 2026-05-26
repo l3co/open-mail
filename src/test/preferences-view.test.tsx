@@ -390,11 +390,47 @@ describe('preferences view', () => {
       </QueryClientProvider>
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: /parchment/i }));
+    fireEvent.click(
+      await screen.findByRole('radio', { name: /Parchment Soft editorial light theme with warm paper contrast\./i })
+    );
     expect(document.documentElement.dataset.theme).toBe('light');
 
     fireEvent.change(screen.getByLabelText('Layout'), { target: { value: 'list' } });
     expect(useUIStore.getState().layoutMode).toBe('list');
+  });
+
+  it('supports keyboard navigation across theme choices in preferences', async () => {
+    window.history.pushState({}, '', '/preferences');
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>
+    );
+
+    const themeGroup = await screen.findByRole('radiogroup', { name: 'Theme selection' });
+    const systemTheme = within(themeGroup).getByRole('radio', { name: /System Follow the OS preference\./i });
+    const darkTheme = within(themeGroup).getByRole('radio', { name: /Nocturne Warm dark workspace for long reading sessions\./i });
+    const lightTheme = within(themeGroup).getByRole('radio', { name: /Parchment Soft editorial light theme with warm paper contrast\./i });
+
+    systemTheme.focus();
+    expect(systemTheme).toHaveFocus();
+    expect(systemTheme).toHaveAttribute('aria-checked', 'true');
+
+    fireEvent.keyDown(systemTheme, { key: 'ArrowRight' });
+    expect(darkTheme).toHaveFocus();
+    expect(darkTheme).toHaveAttribute('aria-checked', 'true');
+    expect(useUIStore.getState().themeId).toBe('dark');
+
+    fireEvent.keyDown(document.activeElement as Element, { key: 'End' });
+    expect(lightTheme).toHaveFocus();
+    expect(lightTheme).toHaveAttribute('aria-checked', 'true');
+    expect(useUIStore.getState().themeId).toBe('light');
+
+    fireEvent.keyDown(document.activeElement as Element, { key: 'Home' });
+    expect(systemTheme).toHaveFocus();
+    expect(systemTheme).toHaveAttribute('aria-checked', 'true');
+    expect(useUIStore.getState().themeId).toBe('system');
   });
 
   it('hydrates and saves preferences through the desktop backend', async () => {
