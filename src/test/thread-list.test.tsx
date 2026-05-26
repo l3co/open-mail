@@ -268,6 +268,57 @@ describe('ThreadList', () => {
     expect(filterThreads(threads, 'all')).toHaveLength(3);
   });
 
+  it('supports keyboard navigation across thread filters', () => {
+    render(
+      <ThreadListPanel
+        activeFolderId="fld_inbox"
+        activeFolderName="Inbox"
+        folders={[folder('fld_inbox', 'Inbox')]}
+        isSearchActive={false}
+        onSelectThread={vi.fn()}
+        searchQuery=""
+        selectedThreadId="thr_0"
+        threads={[
+          makeThread(1, { isUnread: true, isStarred: false, hasAttachments: false }),
+          makeThread(2, { isUnread: false, isStarred: true, hasAttachments: false }),
+          makeThread(3, { isUnread: false, isStarred: false, hasAttachments: true })
+        ]}
+      />
+    );
+
+    const group = screen.getByRole('radiogroup', { name: 'Thread filters' });
+    expect(group).toBeInTheDocument();
+
+    const all = screen.getByRole('radio', { name: 'All' });
+    const unread = screen.getByRole('radio', { name: 'Unread' });
+    const starred = screen.getByRole('radio', { name: 'Starred' });
+    const attachments = screen.getByRole('radio', { name: 'Attachments' });
+
+    all.focus();
+    expect(all).toHaveFocus();
+    expect(all).toHaveAttribute('aria-checked', 'true');
+
+    fireEvent.keyDown(all, { key: 'ArrowRight' });
+    expect(unread).toHaveFocus();
+    expect(unread).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByText('Thread 2')).not.toBeInTheDocument();
+    expect(screen.queryByText('Thread 3')).not.toBeInTheDocument();
+
+    fireEvent.keyDown(unread, { key: 'End' });
+    expect(attachments).toHaveFocus();
+    expect(attachments).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByText('Thread 1')).not.toBeInTheDocument();
+    expect(screen.queryByText('Thread 2')).not.toBeInTheDocument();
+
+    fireEvent.keyDown(attachments, { key: 'Home' });
+    expect(all).toHaveFocus();
+    expect(all).toHaveAttribute('aria-checked', 'true');
+    expect(starred).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByText('Thread 1')).toBeInTheDocument();
+    expect(screen.getByText('Thread 2')).toBeInTheDocument();
+    expect(screen.getByText('Thread 3')).toBeInTheDocument();
+  });
+
   it('opens a move dialog and reports the selected destination folder', () => {
     const onMoveThreads = vi.fn();
 
